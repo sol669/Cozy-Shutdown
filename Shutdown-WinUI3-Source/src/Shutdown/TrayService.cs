@@ -25,6 +25,7 @@ public sealed class TrayService : IDisposable
     private nint _window;
     private nint _trayIcon;
     private string? _trayIconKey;
+    private uint _taskbarCreatedMessage;
     private NativeMethods.NOTIFYICONDATA _notifyData;
     private SettingsWindow? _settingsWindow;
     private PowerActionKind? _scheduledAction;
@@ -58,6 +59,7 @@ public sealed class TrayService : IDisposable
         NativeMethods.RegisterClassEx(ref wc);
         _window = NativeMethods.CreateWindowEx(0, className, "Shutdown Trey", 0, 0, 0, 0, 0,
             nint.Zero, nint.Zero, instance, nint.Zero);
+        _taskbarCreatedMessage = NativeMethods.RegisterWindowMessage("TaskbarCreated");
         NativeMethods.WTSRegisterSessionNotification(_window, NativeMethods.NOTIFY_FOR_THIS_SESSION);
         _isRdpSession = RdpSession.IsCurrentSessionRemote();
 
@@ -70,7 +72,7 @@ public sealed class TrayService : IDisposable
             szTip = CurrentTrayTip(),
             szInfo = string.Empty, szInfoTitle = string.Empty
         };
-        NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_ADD, ref _notifyData);
+        AddTrayIcon();
         RefreshHotkey();
         _schedulerTimer.Start();
     }
@@ -87,6 +89,16 @@ public sealed class TrayService : IDisposable
         _trayIcon = NativeMethods.LoadImage(nint.Zero, path, NativeMethods.IMAGE_ICON, 0, 0,
             NativeMethods.LR_LOADFROMFILE | NativeMethods.LR_DEFAULTSIZE);
         _trayIconKey = key;
+    }
+
+    private void AddTrayIcon()
+    {
+        if (_window == nint.Zero) return;
+        _notifyData.uFlags = NativeMethods.NIF_MESSAGE | NativeMethods.NIF_ICON | NativeMethods.NIF_TIP;
+        _notifyData.uCallbackMessage = TrayMessage;
+        _notifyData.hIcon = _trayIcon;
+        _notifyData.szTip = CurrentTrayTip();
+        NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_ADD, ref _notifyData);
     }
 
     public void RefreshHotkey()
@@ -114,6 +126,11 @@ public sealed class TrayService : IDisposable
     {
         try
         {
+            if (msg == _taskbarCreatedMessage)
+            {
+                AddTrayIcon();
+                return nint.Zero;
+            }
             if (msg == TrayMessage)
             {
                 uint mouseMessage = unchecked((uint)lParam.ToInt64());
@@ -397,3 +414,4 @@ public sealed class TrayService : IDisposable
         if (_trayIcon != nint.Zero) { NativeMethods.DestroyIcon(_trayIcon); _trayIcon = nint.Zero; }
     }
 }
+
