@@ -77,13 +77,18 @@ public sealed class TrayService : IDisposable
     {
         if (NativeMethods.GetSystemMetrics(NativeMethods.SM_REMOTESESSION) != 0)
         {
-            const string systemIconKey = "system_application";
+            const string systemIconKey = "rdp_disconnect";
             if (_trayIconKey == systemIconKey && _trayIcon != nint.Zero) return;
             DestroyTrayIcon();
-            _trayIcon = NativeMethods.LoadIcon(nint.Zero, (nint)NativeMethods.IDI_APPLICATION);
-            _ownsTrayIcon = false;
-            _trayIconKey = systemIconKey;
-            return;
+            var smallIcons = new nint[1];
+            string disconnectTool = Path.Combine(Environment.SystemDirectory, "tsdiscon.exe");
+            if (NativeMethods.ExtractIconEx(disconnectTool, 0, null, smallIcons, 1) != 0)
+            {
+                _trayIcon = smallIcons[0];
+                _ownsTrayIcon = _trayIcon != nint.Zero;
+                _trayIconKey = systemIconKey;
+                return;
+            }
         }
 
         string action = _settings.Current.DefaultAction.ToString().ToLowerInvariant();
@@ -114,8 +119,6 @@ public sealed class TrayService : IDisposable
         _notifyData.hIcon = _trayIcon;
         _notifyData.szTip = Strings.TrayTip(_settings.Current.DefaultAction, _scheduledAction, _scheduledFor);
         NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_ADD, ref _notifyData);
-        _notifyData.uTimeoutOrVersion = NativeMethods.NOTIFYICON_VERSION_4;
-        NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_SETVERSION, ref _notifyData);
     }
 
     public void RefreshHotkey()
