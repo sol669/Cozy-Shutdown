@@ -32,6 +32,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 Compression=lzma2/ultra64
 SolidCompression=yes
+UseSetupLdr=no
 CloseApplications=yes
 RestartApplications=no
 AppMutex=sol669.Shutdown.Singleton
