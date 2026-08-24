@@ -121,6 +121,8 @@ internal static class NativeMethods
     internal static extern nint LoadImage(nint hInst, string name, uint type, int cx, int cy, uint fuLoad);
     [DllImport("user32.dll")]
     internal static extern bool DestroyIcon(nint hIcon);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    internal static extern uint RegisterWindowMessage(string lpString);
     [DllImport("user32.dll")]
     internal static extern int GetSystemMetrics(int nIndex);
     [DllImport("wtsapi32.dll", SetLastError = true)]
@@ -133,3 +135,4 @@ internal static class NativeMethods
     [DllImport("wtsapi32.dll")]
     internal static extern void WTSFreeMemory(nint memory);
 }
+
