@@ -59,17 +59,9 @@ jobs:
         shell: pwsh
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.1 "installer\Shutdown.iss"'
 
-      - name: Package offline installer
-        shell: pwsh
-        run: Compress-Archive -Path release\Shutdown-Trey-Setup-Offline-v1.1.1* -DestinationPath Shutdown-Trey-Setup-Offline-v1.1.1.zip -CompressionLevel Optimal
-
       - name: Build standard online installer
         shell: pwsh
         run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.1 "installer\Shutdown-Online.iss"'
-
-      - name: Package standard online installer
-        shell: pwsh
-        run: Compress-Archive -Path release\Shutdown-Trey-Setup-v1.1.1* -DestinationPath Shutdown-Trey-Setup-v1.1.1.zip -CompressionLevel Optimal
 
       - name: Upload offline portable artifact
         uses: actions/upload-artifact@v4
@@ -83,7 +75,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Shutdown-Trey-Setup-Offline-win-x64
-          path: Shutdown-Trey-Setup-Offline-v1.1.1.zip
+          path: release/Shutdown-Trey-Setup-Offline-v1.1.1.exe
           if-no-files-found: error
           compression-level: 0
 
@@ -99,7 +91,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Shutdown-Trey-Setup-win-x64
-          path: Shutdown-Trey-Setup-v1.1.1.zip
+          path: release/Shutdown-Trey-Setup-v1.1.1.exe
           if-no-files-found: error
           compression-level: 0
 
@@ -110,8 +102,8 @@ jobs:
           tag_name: v1.1.1
           files: |
             Shutdown-Trey-Portable-win-x64.zip
-            Shutdown-Trey-Setup-v1.1.1.zip
+            release/Shutdown-Trey-Setup-v1.1.1.exe
             Shutdown-Trey-Portable-Offline-win-x64.zip
-            Shutdown-Trey-Setup-Offline-v1.1.1.zip
+            release/Shutdown-Trey-Setup-Offline-v1.1.1.exe
           fail_on_unmatched_files: true
           overwrite_files: true
