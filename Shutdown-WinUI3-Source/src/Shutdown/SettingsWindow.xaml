@@ -29,6 +29,13 @@
                 <Setter Property="VerticalAlignment" Value="Center" />
                 <Setter Property="Opacity" Value="0.72" />
             </Style>
+            <Style x:Key="SettingsToggleStyle" TargetType="ToggleSwitch">
+                <Setter Property="MinWidth" Value="0" />
+                <Setter Property="HorizontalAlignment" Value="Right" />
+                <Setter Property="VerticalAlignment" Value="Center" />
+                <Setter Property="OffContent" Value="" />
+                <Setter Property="OnContent" Value="" />
+            </Style>
         </Grid.Resources>
 
         <Grid.RowDefinitions>
@@ -52,7 +59,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <TextBlock x:Name="ShutdownLabel" VerticalAlignment="Center"/>
                         <TextBlock x:Name="ShutdownState" Grid.Column="1" Style="{StaticResource StateTextStyle}"/>
-                        <ToggleSwitch x:Name="ShutdownToggle" Grid.Column="2" OffContent="" OnContent="" Toggled="ActionToggle_Toggled"/>
+                        <ToggleSwitch x:Name="ShutdownToggle" Grid.Column="2" Style="{StaticResource SettingsToggleStyle}" Toggled="ActionToggle_Toggled"/>
                     </Grid>
                 </Border>
                 <Border Style="{StaticResource SettingsCardStyle}">
@@ -60,7 +67,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <TextBlock x:Name="RestartLabel" VerticalAlignment="Center"/>
                         <TextBlock x:Name="RestartState" Grid.Column="1" Style="{StaticResource StateTextStyle}"/>
-                        <ToggleSwitch x:Name="RestartToggle" Grid.Column="2" OffContent="" OnContent="" Toggled="ActionToggle_Toggled"/>
+                        <ToggleSwitch x:Name="RestartToggle" Grid.Column="2" Style="{StaticResource SettingsToggleStyle}" Toggled="ActionToggle_Toggled"/>
                     </Grid>
                 </Border>
                 <Border Style="{StaticResource SettingsCardStyle}">
@@ -68,7 +75,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <TextBlock x:Name="SleepLabel" VerticalAlignment="Center"/>
                         <TextBlock x:Name="SleepState" Grid.Column="1" Style="{StaticResource StateTextStyle}"/>
-                        <ToggleSwitch x:Name="SleepToggle" Grid.Column="2" OffContent="" OnContent="" Toggled="ActionToggle_Toggled"/>
+                        <ToggleSwitch x:Name="SleepToggle" Grid.Column="2" Style="{StaticResource SettingsToggleStyle}" Toggled="ActionToggle_Toggled"/>
                     </Grid>
                 </Border>
                 <Border Style="{StaticResource SettingsCardStyle}">
@@ -76,7 +83,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <TextBlock x:Name="HibernateLabel" VerticalAlignment="Center"/>
                         <TextBlock x:Name="HibernateState" Grid.Column="1" Style="{StaticResource StateTextStyle}"/>
-                        <ToggleSwitch x:Name="HibernateToggle" Grid.Column="2" OffContent="" OnContent="" Toggled="ActionToggle_Toggled"/>
+                        <ToggleSwitch x:Name="HibernateToggle" Grid.Column="2" Style="{StaticResource SettingsToggleStyle}" Toggled="ActionToggle_Toggled"/>
                     </Grid>
                 </Border>
                 <Border Style="{StaticResource SettingsCardStyle}">
@@ -84,7 +91,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <TextBlock x:Name="LockLabel" VerticalAlignment="Center"/>
                         <TextBlock x:Name="LockState" Grid.Column="1" Style="{StaticResource StateTextStyle}"/>
-                        <ToggleSwitch x:Name="LockToggle" Grid.Column="2" OffContent="" OnContent="" Toggled="ActionToggle_Toggled"/>
+                        <ToggleSwitch x:Name="LockToggle" Grid.Column="2" Style="{StaticResource SettingsToggleStyle}" Toggled="ActionToggle_Toggled"/>
                     </Grid>
                 </Border>
                 <Border Style="{StaticResource SettingsCardStyle}">
@@ -124,7 +131,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <TextBlock x:Name="ScheduledMenuLabel" VerticalAlignment="Center"/>
                         <TextBlock x:Name="ScheduledMenuState" Grid.Column="1" Style="{StaticResource StateTextStyle}"/>
-                        <ToggleSwitch x:Name="ScheduledMenuToggle" Grid.Column="2" OffContent="" OnContent="" Toggled="OptionToggle_Toggled"/>
+                        <ToggleSwitch x:Name="ScheduledMenuToggle" Grid.Column="2" Style="{StaticResource SettingsToggleStyle}" Toggled="OptionToggle_Toggled"/>
                     </Grid>
                 </Border>
 
@@ -134,7 +141,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <TextBlock x:Name="RdpLabel" VerticalAlignment="Center"/>
                         <TextBlock x:Name="RdpState" Grid.Column="1" Style="{StaticResource StateTextStyle}"/>
-                        <ToggleSwitch x:Name="RdpToggle" Grid.Column="2" OffContent="" OnContent="" Toggled="OptionToggle_Toggled"/>
+                        <ToggleSwitch x:Name="RdpToggle" Grid.Column="2" Style="{StaticResource SettingsToggleStyle}" Toggled="OptionToggle_Toggled"/>
                     </Grid>
                 </Border>
                 <Border Style="{StaticResource SettingsCardStyle}">
@@ -142,7 +149,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <TextBlock x:Name="AutostartLabel" VerticalAlignment="Center"/>
                         <TextBlock x:Name="AutostartState" Grid.Column="1" Style="{StaticResource StateTextStyle}"/>
-                        <ToggleSwitch x:Name="AutostartToggle" Grid.Column="2" OffContent="" OnContent="" Toggled="OptionToggle_Toggled"/>
+                        <ToggleSwitch x:Name="AutostartToggle" Grid.Column="2" Style="{StaticResource SettingsToggleStyle}" Toggled="OptionToggle_Toggled"/>
                     </Grid>
                 </Border>
 
