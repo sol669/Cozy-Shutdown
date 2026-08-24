@@ -24,7 +24,9 @@ public sealed class TrayService : IDisposable
     private readonly DispatcherQueueTimer _schedulerTimer;
     private nint _window;
     private nint _trayIcon;
+    private bool _ownsTrayIcon;
     private string? _trayIconKey;
+    private uint _taskbarCreatedMessage;
     private NativeMethods.NOTIFYICONDATA _notifyData;
     private SettingsWindow? _settingsWindow;
     private PowerActionKind? _scheduledAction;
@@ -55,6 +57,7 @@ public sealed class TrayService : IDisposable
         NativeMethods.RegisterClassEx(ref wc);
         _window = NativeMethods.CreateWindowEx(0, className, "Shutdown Trey", 0, 0, 0, 0, 0,
             nint.Zero, nint.Zero, instance, nint.Zero);
+        _taskbarCreatedMessage = NativeMethods.RegisterWindowMessage("TaskbarCreated");
 
         LoadTrayIcon();
         _notifyData = new NativeMethods.NOTIFYICONDATA
@@ -65,23 +68,54 @@ public sealed class TrayService : IDisposable
             szTip = Strings.TrayTip(_settings.Current.DefaultAction, null, null),
             szInfo = string.Empty, szInfoTitle = string.Empty
         };
-        NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_ADD, ref _notifyData);
+        AddTrayIcon();
         RefreshHotkey();
         _schedulerTimer.Start();
     }
 
     private void LoadTrayIcon()
     {
+        if (NativeMethods.GetSystemMetrics(NativeMethods.SM_REMOTESESSION) != 0)
+        {
+            const string systemIconKey = "system_application";
+            if (_trayIconKey == systemIconKey && _trayIcon != nint.Zero) return;
+            DestroyTrayIcon();
+            _trayIcon = NativeMethods.LoadIcon(nint.Zero, (nint)NativeMethods.IDI_APPLICATION);
+            _ownsTrayIcon = false;
+            _trayIconKey = systemIconKey;
+            return;
+        }
+
         string action = _settings.Current.DefaultAction.ToString().ToLowerInvariant();
         string scheduled = _scheduledAction is null ? string.Empty : "_scheduled";
         string tone = NativeTheme.IsTaskbarDark() ? "white" : "black";
         string key = $"tray_{action}{scheduled}_{tone}.ico";
         if (_trayIconKey == key && _trayIcon != nint.Zero) return;
-        if (_trayIcon != nint.Zero) NativeMethods.DestroyIcon(_trayIcon);
+        DestroyTrayIcon();
         string path = Path.Combine(AppContext.BaseDirectory, "Assets", key);
         _trayIcon = NativeMethods.LoadImage(nint.Zero, path, NativeMethods.IMAGE_ICON, 0, 0,
             NativeMethods.LR_LOADFROMFILE | NativeMethods.LR_DEFAULTSIZE);
+        _ownsTrayIcon = _trayIcon != nint.Zero;
         _trayIconKey = key;
+    }
+
+    private void DestroyTrayIcon()
+    {
+        if (_trayIcon != nint.Zero && _ownsTrayIcon) NativeMethods.DestroyIcon(_trayIcon);
+        _trayIcon = nint.Zero;
+        _ownsTrayIcon = false;
+    }
+
+    private void AddTrayIcon()
+    {
+        if (_window == nint.Zero) return;
+        _notifyData.uFlags = NativeMethods.NIF_MESSAGE | NativeMethods.NIF_ICON | NativeMethods.NIF_TIP;
+        _notifyData.uCallbackMessage = TrayMessage;
+        _notifyData.hIcon = _trayIcon;
+        _notifyData.szTip = Strings.TrayTip(_settings.Current.DefaultAction, _scheduledAction, _scheduledFor);
+        NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_ADD, ref _notifyData);
+        _notifyData.uTimeoutOrVersion = NativeMethods.NOTIFYICON_VERSION_4;
+        NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_SETVERSION, ref _notifyData);
     }
 
     public void RefreshHotkey()
@@ -109,6 +143,12 @@ public sealed class TrayService : IDisposable
     {
         try
         {
+            if (msg == _taskbarCreatedMessage)
+            {
+                // Explorer lost its icon table; register again without restarting the app.
+                AddTrayIcon();
+                return nint.Zero;
+            }
             if (msg == TrayMessage)
             {
                 uint mouseMessage = unchecked((uint)lParam.ToInt64());
@@ -357,6 +397,6 @@ public sealed class TrayService : IDisposable
             NativeMethods.DestroyWindow(_window);
             _window = nint.Zero;
         }
-        if (_trayIcon != nint.Zero) { NativeMethods.DestroyIcon(_trayIcon); _trayIcon = nint.Zero; }
+        DestroyTrayIcon();
     }
 }
