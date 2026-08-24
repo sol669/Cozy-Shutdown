@@ -32,9 +32,13 @@ internal static class NativeMethods
     internal const uint NIM_ADD = 0x00000000;
     internal const uint NIM_MODIFY = 0x00000001;
     internal const uint NIM_DELETE = 0x00000002;
+    internal const uint NIM_SETVERSION = 0x00000004;
+    internal const uint NOTIFYICON_VERSION_4 = 4;
     internal const uint IMAGE_ICON = 1;
     internal const uint LR_LOADFROMFILE = 0x0010;
     internal const uint LR_DEFAULTSIZE = 0x0040;
+    internal const int SM_REMOTESESSION = 0x1000;
+    internal const int IDI_APPLICATION = 32512;
 
     internal delegate nint WndProc(nint hWnd, uint msg, nuint wParam, nint lParam);
 
@@ -114,6 +118,12 @@ internal static class NativeMethods
     internal static extern bool UnregisterHotKey(nint hWnd, int id);
     [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     internal static extern nint LoadImage(nint hInst, string name, uint type, int cx, int cy, uint fuLoad);
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern nint LoadIcon(nint hInstance, nint lpIconName);
     [DllImport("user32.dll")]
     internal static extern bool DestroyIcon(nint hIcon);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    internal static extern uint RegisterWindowMessage(string lpString);
+    [DllImport("user32.dll")]
+    internal static extern int GetSystemMetrics(int nIndex);
 }
