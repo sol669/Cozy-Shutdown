@@ -20,7 +20,7 @@
     <PublishTrimmed>false</PublishTrimmed>
     <ApplicationIcon>Assets\ShutdownTrey.ico</ApplicationIcon>
     <AssemblyName>Shutdown</AssemblyName>
-    <Version>1.1.1</Version>
+    <Version>1.1.2</Version>
     <Authors>sol669</Authors>
     <Product>Shutdown Trey</Product>
     <Description>Native Windows tray utility for immediate and scheduled power actions.</Description>

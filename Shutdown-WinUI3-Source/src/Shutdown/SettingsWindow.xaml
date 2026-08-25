@@ -174,7 +174,7 @@
                 </Border>
 
                 <StackPanel Orientation="Horizontal" Spacing="6" Margin="2,8,0,10">
-                    <TextBlock Text="Shutdown Trey 1.1.1 · sol669 ·" VerticalAlignment="Center" Opacity="0.68"/>
+                    <TextBlock Text="Shutdown Trey 1.1.2 · sol669 ·" VerticalAlignment="Center" Opacity="0.68"/>
                     <HyperlinkButton Content="GitHub" NavigateUri="https://github.com/sol669/Shutdown" Padding="0"/>
                 </StackPanel>
             </StackPanel>
