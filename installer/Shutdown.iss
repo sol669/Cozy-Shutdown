@@ -1,10 +1,10 @@
-#define AppName "Shutdown Trey"
+#define AppName "Shutdown Tray"
 #define AppExeName "Shutdown.exe"
 #define AppPublisher "sol669"
 #define AppURL "https://github.com/sol669/Shutdown"
 
 #ifndef AppVersion
-  #define AppVersion "1.1.2"
+  #define AppVersion "1.2.1"
 #endif
 
 #ifndef PublishDir
@@ -19,11 +19,12 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}/issues
 AppUpdatesURL={#AppURL}/releases
-DefaultDirName={autopf}\{#AppPublisher}\{#AppName}
-DefaultGroupName={#AppName}
+; Preserve the install location and group used by previous versions.
+DefaultDirName={autopf}\{#AppPublisher}\Shutdown Trey
+DefaultGroupName=Shutdown Trey
 DisableProgramGroupPage=yes
 OutputDir=..\release
-OutputBaseFilename=Shutdown-Trey-Setup-Offline-v{#AppVersion}
+OutputBaseFilename=Shutdown-Tray-Setup-Offline-v{#AppVersion}
 SetupIconFile=..\Shutdown-WinUI3-Source\src\Shutdown\Assets\ShutdownTrey.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 WizardStyle=modern
@@ -52,8 +53,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{group}\Shutdown Trey"; Filename: "{app}\{#AppExeName}"
+Name: "{autodesktop}\Shutdown Trey"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent

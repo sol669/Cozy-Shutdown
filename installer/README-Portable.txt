@@ -1,4 +1,4 @@
-Shutdown Trey Portable 1.1.2
+Shutdown Tray Portable 1.2.1
 ============================
 
 Это стандартная компактная portable-версия.
@@ -7,7 +7,7 @@ Shutdown Trey Portable 1.1.2
 - Microsoft .NET 8 Runtime (x64)
 - Microsoft Windows App Runtime 2.3 (x64)
 
-Обычный установщик Shutdown-Trey-Setup проверяет компоненты и
+Обычный установщик Shutdown-Tray-Setup проверяет компоненты и
 автоматически загружает недостающие версии с серверов Microsoft.
 
 Portable-версия ничего не устанавливает. Если необходимые компоненты

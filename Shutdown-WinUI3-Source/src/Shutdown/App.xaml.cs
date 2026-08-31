@@ -1,11 +1,13 @@
 using Microsoft.UI.Xaml;
 using System;
 using System.Threading;
+using System.Linq;
 
 namespace ShutdownApp;
 
 public partial class App : Application
 {
+    internal static bool Preview { get; } = Environment.GetCommandLineArgs().Contains("--preview");
     private Mutex? _singleInstance;
     private Window? _lifetimeWindow;
     internal static TrayService? Tray { get; private set; }
@@ -23,7 +25,7 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _singleInstance = new Mutex(true, "sol669.Shutdown.Singleton", out bool createdNew);
+        _singleInstance = new Mutex(true, Preview ? "sol669.Shutdown.Preview" : "sol669.Shutdown.Singleton", out bool createdNew);
         if (!createdNew)
         {
             Exit();
@@ -35,6 +37,7 @@ public partial class App : Application
         CreateLifetimeWindow();
         Tray = new TrayService(Settings);
         Tray.Initialize();
+        if (Preview || Environment.GetCommandLineArgs().Contains("--settings")) Tray.ShowSettings();
     }
 
     private void CreateLifetimeWindow()

@@ -4,17 +4,17 @@ using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using System.Linq;
+using System.Threading;
 
 namespace ShutdownApp;
 
 public sealed class TrayService : IDisposable
 {
     private const uint TrayMessage = NativeMethods.WM_APP + 1;
-    private const int HotkeyId = 669;
     private const uint ActionBase = 1100;
     private const uint ScheduleBase = 2100;
     private const uint IdCancelScheduled = 2900;
-    private const uint IdRdp = 3001;
     private const uint IdSettings = 3002;
     private const uint IdExit = 3003;
 
@@ -34,8 +34,11 @@ public sealed class TrayService : IDisposable
     private bool _warningOpen;
     private int _scheduleGeneration;
     private bool _isRdpSession;
-
-    private bool IsRdpDefault => _isRdpSession && _settings.Current.UseRdpAsDefaultAction;
+    private bool _scheduledRemote;
+    private bool _actionInProgress;
+    private CancellationTokenSource? _scheduledWarningCancellation;
+    private List<PowerActionKind> CurrentActions => ActionPolicy.Menu(_settings.Current, _isRdpSession, SystemActions.IsAvailable);
+    private PowerActionKind? CurrentDefault => CurrentActions.Count > 0 ? CurrentActions[0] : null;
 
     public TrayService(SettingsStore settings)
     {
@@ -49,7 +52,7 @@ public sealed class TrayService : IDisposable
 
     public void Initialize()
     {
-        const string className = "sol669.Shutdown.TrayWindow";
+        string className = App.Preview ? "sol669.Shutdown.PreviewTrayWindow" : "sol669.Shutdown.TrayWindow";
         nint instance = NativeMethods.GetModuleHandle(null);
         var wc = new NativeMethods.WNDCLASSEX
         {
@@ -73,16 +76,18 @@ public sealed class TrayService : IDisposable
             szInfo = string.Empty, szInfoTitle = string.Empty
         };
         AddTrayIcon();
-        RefreshHotkey();
         _schedulerTimer.Start();
     }
 
     private void LoadTrayIcon()
     {
-        string action = IsRdpDefault ? "rdp" : _settings.Current.DefaultAction.ToString().ToLowerInvariant();
+        var primary = CurrentDefault;
+        bool disconnect = primary == PowerActionKind.Disconnect;
+        string action = disconnect ? "rdp" : (primary ?? PowerActionKind.Shutdown).ToString().ToLowerInvariant();
         string scheduled = _scheduledAction is null ? string.Empty : "_scheduled";
         string tone = NativeTheme.IsTaskbarDark() ? "white" : "black";
-        string key = IsRdpDefault ? $"tray_rdp_{tone}.ico" : $"tray_{action}{scheduled}_{tone}.ico";
+        string key = $"tray_{action}{scheduled}_{tone}.ico";
+        if (disconnect && !File.Exists(Path.Combine(AppContext.BaseDirectory, "Assets", key))) key = $"tray_rdp_{tone}.ico";
         if (_trayIconKey == key && _trayIcon != nint.Zero) return;
         if (_trayIcon != nint.Zero) NativeMethods.DestroyIcon(_trayIcon);
         string path = Path.Combine(AppContext.BaseDirectory, "Assets", key);
@@ -101,21 +106,11 @@ public sealed class TrayService : IDisposable
         NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_ADD, ref _notifyData);
     }
 
-    public void RefreshHotkey()
-    {
-        if (_window == nint.Zero) return;
-        NativeMethods.UnregisterHotKey(_window, HotkeyId);
-        if (_isRdpSession)
-            NativeMethods.RegisterHotKey(_window, HotkeyId,
-                NativeMethods.MOD_CONTROL | NativeMethods.MOD_ALT | NativeMethods.MOD_SHIFT, NativeMethods.VK_Q);
-    }
-
     public void RefreshAfterSettingsChanged()
     {
-        RefreshHotkey();
         if (_scheduledAction is not null &&
             (!_settings.Current.ShowScheduledActions ||
-             !_settings.Current.EnabledActions.HasFlag(_scheduledAction.Value.ToFlag()) ||
+             !ActionPolicy.Enabled(_settings.Current, _scheduledRemote).HasFlag(_scheduledAction.Value.ToFlag()) ||
              !SystemActions.IsAvailable(_scheduledAction.Value)))
             CancelSchedule(true);
         LoadTrayIcon();
@@ -139,11 +134,8 @@ public sealed class TrayService : IDisposable
                     _dispatcher.TryEnqueue(PerformDefaultAction);
                 return nint.Zero;
             }
-            if (msg == NativeMethods.WM_HOTKEY && (int)wParam == HotkeyId)
-            {
-                _dispatcher.TryEnqueue(SystemActions.DisconnectRdp);
-                return nint.Zero;
-            }
+            if (msg == 0x001A || msg == 0x031A) // Settings/theme change, including taskbar icon contrast.
+                _dispatcher.TryEnqueue(UpdateTray);
             if (msg == NativeMethods.WM_POWERBROADCAST && (uint)wParam == NativeMethods.PBT_APMRESUMEAUTOMATIC)
             {
                 _dispatcher.TryEnqueue(HandleResume);
@@ -160,13 +152,6 @@ public sealed class TrayService : IDisposable
         return NativeMethods.DefWindowProc(hWnd, msg, wParam, lParam);
     }
 
-    private IEnumerable<PowerActionKind> EnabledActions()
-    {
-        foreach (PowerActionKind action in Enum.GetValues<PowerActionKind>())
-            if (_settings.Current.EnabledActions.HasFlag(action.ToFlag()) && SystemActions.IsAvailable(action))
-                yield return action;
-    }
-
     private void ShowMenu()
     {
         RefreshSessionState();
@@ -174,13 +159,14 @@ public sealed class TrayService : IDisposable
         nint menu = NativeMethods.CreatePopupMenu();
         try
         {
-            foreach (var action in EnabledActions())
+            var actions = CurrentActions;
+            for (int index = 0; index < actions.Count; index++)
+            {
+                var action = actions[index];
+                if (index == 1) NativeMethods.AppendMenu(menu, NativeMethods.MF_SEPARATOR, 0, null);
                 NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING, ActionBase + (uint)action, Strings.ActionName(action));
-            if (_isRdpSession)
-                NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING, IdRdp, Strings.DisconnectRdp + "\tCtrl+Alt+Shift+Q");
-
-            NativeMethods.SetMenuDefaultItem(menu,
-                IsRdpDefault ? IdRdp : ActionBase + (uint)_settings.Current.DefaultAction, 0);
+            }
+            if (actions.Count > 0) NativeMethods.SetMenuDefaultItem(menu, ActionBase + (uint)actions[0], 0);
 
             if (_settings.Current.ShowScheduledActions)
             {
@@ -192,7 +178,7 @@ public sealed class TrayService : IDisposable
                     NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING, IdCancelScheduled, Strings.CancelScheduled);
                 }
                 nint scheduledMenu = NativeMethods.CreatePopupMenu();
-                foreach (var action in EnabledActions())
+                foreach (var action in actions)
                 {
                     nint actionMenu = NativeMethods.CreatePopupMenu();
                     uint root = ScheduleBase + (uint)action * 10;
@@ -204,7 +190,8 @@ public sealed class TrayService : IDisposable
                     NativeMethods.AppendMenu(actionMenu, NativeMethods.MF_STRING, root + 4, Strings.ChooseDateTime);
                     NativeMethods.AppendMenu(scheduledMenu, NativeMethods.MF_POPUP, (nuint)actionMenu, Strings.ActionName(action));
                 }
-                NativeMethods.AppendMenu(menu, NativeMethods.MF_POPUP, (nuint)scheduledMenu, Strings.ScheduledAction);
+                NativeMethods.AppendMenu(menu, NativeMethods.MF_POPUP | (actions.Count == 0 ? NativeMethods.MF_GRAYED : 0),
+                    (nuint)scheduledMenu, Strings.ScheduledAction);
             }
 
             NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING, IdSettings, Strings.Settings);
@@ -222,23 +209,22 @@ public sealed class TrayService : IDisposable
 
     private void ExecuteCommand(uint command)
     {
-        if (command >= ActionBase && command < ActionBase + 5)
+        if (command >= ActionBase && command < ActionBase + 6)
         {
-            _ = PerformPowerActionAsync((PowerActionKind)(command - ActionBase));
+            _ = RunSafelyAsync(() => PerformPowerActionAsync((PowerActionKind)(command - ActionBase)));
             return;
         }
-        if (command >= ScheduleBase && command < ScheduleBase + 50)
+        if (command >= ScheduleBase && command < ScheduleBase + 60)
         {
             uint value = command - ScheduleBase;
-            _ = ScheduleCommandAsync((PowerActionKind)(value / 10), (int)(value % 10));
+            _ = RunSafelyAsync(() => ScheduleCommandAsync((PowerActionKind)(value / 10), (int)(value % 10)));
             return;
         }
         switch (command)
         {
             case IdCancelScheduled: CancelSchedule(true); break;
-            case IdRdp: SystemActions.DisconnectRdp(); break;
             case IdSettings: ShowSettings(); break;
-            case IdExit: _ = ExitAsync(); break;
+            case IdExit: _ = RunSafelyAsync(ExitAsync); break;
         }
     }
 
@@ -251,23 +237,30 @@ public sealed class TrayService : IDisposable
 
     private async Task PerformPowerActionAsync(PowerActionKind action)
     {
-        var current = _settings.Current;
-        bool confirmed = current.ConfirmationMode switch
+        RefreshSessionState();
+        if (_actionInProgress || _warningOpen || !CurrentActions.Contains(action)) return;
+        _actionInProgress = true;
+        bool remote = _isRdpSession;
+        try
         {
-            ConfirmationMode.None => true,
-            ConfirmationMode.Ask => await ConfirmWindow.ShowAsync(action, null),
-            _ => await ConfirmWindow.ShowAsync(action, current.CountdownSeconds)
-        };
-        if (confirmed) SystemActions.Execute(action);
+            var current = _settings.Current;
+            bool confirmed = current.ConfirmationMode switch
+            {
+                ConfirmationMode.None => true,
+                ConfirmationMode.Ask => await ConfirmWindow.ShowAsync(action, null),
+                _ => await ConfirmWindow.ShowAsync(action, current.CountdownSeconds)
+            };
+            RefreshSessionState();
+            if (confirmed && remote == _isRdpSession && CurrentActions.Contains(action)) SystemActions.Execute(action);
+        }
+        finally { _actionInProgress = false; }
     }
 
     private void PerformDefaultAction()
     {
         RefreshSessionState();
-        if (IsRdpDefault)
-            SystemActions.DisconnectRdp();
-        else
-            _ = PerformPowerActionAsync(_settings.Current.DefaultAction);
+        if (CurrentDefault is PowerActionKind action)
+            _ = RunSafelyAsync(() => PerformPowerActionAsync(action));
     }
 
     private void RefreshSessionState()
@@ -275,12 +268,15 @@ public sealed class TrayService : IDisposable
         bool remote = RdpSession.IsCurrentSessionRemote();
         if (_isRdpSession == remote) return;
         _isRdpSession = remote;
-        RefreshHotkey();
+        if (!remote && _scheduledAction == PowerActionKind.Disconnect) CancelSchedule(true);
         UpdateTray();
     }
 
     private async Task ScheduleCommandAsync(PowerActionKind action, int option)
     {
+        RefreshSessionState();
+        if (!_settings.Current.ShowScheduledActions || !CurrentActions.Contains(action)) return;
+        bool remote = _isRdpSession;
         DateTime? when = option switch
         {
             0 => DateTime.Now.AddMinutes(30),
@@ -293,7 +289,11 @@ public sealed class TrayService : IDisposable
         if (when is null) return;
         if (_scheduledFor is not null && !await ConfirmWindow.ShowMessageAsync(Strings.ReplaceScheduleQuestion(_scheduledFor.Value)))
             return;
+        RefreshSessionState();
+        if (remote != _isRdpSession || !_settings.Current.ShowScheduledActions || !CurrentActions.Contains(action)) return;
+        _scheduledWarningCancellation?.Cancel();
         _scheduledAction = action;
+        _scheduledRemote = remote;
         _scheduledFor = when;
         _warningOpen = false;
         _lastScheduleCheck = DateTime.Now;
@@ -318,8 +318,8 @@ public sealed class TrayService : IDisposable
             HandleMissedSchedule();
             return;
         }
-        if (!_warningOpen && now >= _scheduledFor.Value.AddSeconds(-30))
-            _ = RunScheduledWarningAsync();
+        if (!_warningOpen && !_actionInProgress && now >= _scheduledFor.Value.AddSeconds(-30))
+            _ = RunSafelyAsync(RunScheduledWarningAsync);
     }
 
     private async Task RunScheduledWarningAsync()
@@ -329,11 +329,23 @@ public sealed class TrayService : IDisposable
         int generation = _scheduleGeneration;
         PowerActionKind action = _scheduledAction.Value;
         int seconds = Math.Clamp((int)Math.Ceiling((_scheduledFor.Value - DateTime.Now).TotalSeconds), 1, 30);
-        bool execute = await ConfirmWindow.ShowAsync(action, seconds);
+        using var cancellation = new CancellationTokenSource();
+        _scheduledWarningCancellation = cancellation;
+        bool execute;
+        try { execute = await ConfirmWindow.ShowAsync(action, seconds, cancellation.Token); }
+        catch
+        {
+            if (generation == _scheduleGeneration) ClearSchedule();
+            throw;
+        }
+        finally
+        {
+            if (ReferenceEquals(_scheduledWarningCancellation, cancellation)) _scheduledWarningCancellation = null;
+        }
         if (generation != _scheduleGeneration) return;
         if (!execute) { CancelSchedule(true); return; }
         ClearSchedule();
-        SystemActions.Execute(action);
+        if (action != PowerActionKind.Disconnect || RdpSession.IsCurrentSessionRemote()) SystemActions.Execute(action);
     }
 
     private void HandleResume()
@@ -361,6 +373,8 @@ public sealed class TrayService : IDisposable
 
     private void ClearSchedule()
     {
+        _scheduledWarningCancellation?.Cancel();
+        _scheduledWarningCancellation = null;
         _scheduledAction = null;
         _scheduledFor = null;
         _warningOpen = false;
@@ -381,18 +395,29 @@ public sealed class TrayService : IDisposable
     private void ShowNotification(string text)
     {
         _notifyData.uFlags = NativeMethods.NIF_INFO;
-        _notifyData.szInfoTitle = "Shutdown Trey";
+        _notifyData.szInfoTitle = "Shutdown Tray";
         _notifyData.szInfo = text;
         _notifyData.dwInfoFlags = NativeMethods.NIIF_INFO;
         NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_MODIFY, ref _notifyData);
     }
 
     private string CurrentTrayTip() => Strings.TrayTip(
-        IsRdpDefault ? Strings.DisconnectRdp : Strings.ActionName(_settings.Current.DefaultAction),
+        CurrentDefault is PowerActionKind action ? Strings.ActionName(action) : "Shutdown Tray",
         _scheduledAction,
         _scheduledFor);
 
-    private void ShowSettings()
+    private async Task RunSafelyAsync(Func<Task> operation)
+    {
+        try { await operation(); }
+        catch (Exception ex)
+        {
+            SettingsStore.Log(ex);
+            ShowNotification(Strings.Ru ? "Не удалось выполнить действие. Подробности записаны в журнал." :
+                "The action could not be completed. Details were written to the log.");
+        }
+    }
+
+    public void ShowSettings()
     {
         if (_settingsWindow is not null) { _settingsWindow.Activate(); return; }
         _settingsWindow = new SettingsWindow(_settings);
@@ -403,9 +428,9 @@ public sealed class TrayService : IDisposable
     public void Dispose()
     {
         _schedulerTimer.Stop();
+        _scheduledWarningCancellation?.Cancel();
         if (_window != nint.Zero)
         {
-            NativeMethods.UnregisterHotKey(_window, HotkeyId);
             NativeMethods.WTSUnRegisterSessionNotification(_window);
             NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_DELETE, ref _notifyData);
             NativeMethods.DestroyWindow(_window);

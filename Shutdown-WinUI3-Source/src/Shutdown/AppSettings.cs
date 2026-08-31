@@ -13,7 +13,8 @@ public enum PowerActionKind
     Restart,
     Sleep,
     Hibernate,
-    Lock
+    Lock,
+    Disconnect
 }
 
 [System.Flags]
@@ -24,7 +25,8 @@ public enum EnabledPowerActions
     Restart = 1 << 1,
     Sleep = 1 << 2,
     Hibernate = 1 << 3,
-    Lock = 1 << 4
+    Lock = 1 << 4,
+    Disconnect = 1 << 5
 }
 
 public enum AppTheme
@@ -45,13 +47,15 @@ public sealed class AppSettings
     public ConfirmationMode ConfirmationMode { get; set; } = ConfirmationMode.Countdown;
     public PowerActionKind DefaultAction { get; set; } = PowerActionKind.Shutdown;
     public EnabledPowerActions EnabledActions { get; set; } =
-        EnabledPowerActions.Shutdown | EnabledPowerActions.Restart;
+        EnabledPowerActions.Shutdown | EnabledPowerActions.Restart | EnabledPowerActions.Disconnect;
     public int CountdownSeconds { get; set; } = 5;
-    public bool UseRdpAsDefaultAction { get; set; } = true;
+    public PowerActionKind RemoteDefaultAction { get; set; } = PowerActionKind.Disconnect;
     public bool ShowScheduledActions { get; set; } = true;
     public bool StartWithWindows { get; set; } = true;
     public AppTheme Theme { get; set; } = AppTheme.System;
     public AppLanguage Language { get; set; } = DetectLanguage();
+
+    public AppSettings Clone() => (AppSettings)MemberwiseClone();
 
     private static AppLanguage DetectLanguage() =>
         System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName

@@ -1,10 +1,10 @@
-#define AppName "Shutdown Trey"
+#define AppName "Shutdown Tray"
 #define AppExeName "Shutdown.exe"
 #define AppPublisher "sol669"
 #define AppURL "https://github.com/sol669/Shutdown"
 
 #ifndef AppVersion
-  #define AppVersion "1.1.2"
+  #define AppVersion "1.2.1"
 #endif
 
 #ifndef PublishDir
@@ -19,11 +19,12 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}/issues
 AppUpdatesURL={#AppURL}/releases
-DefaultDirName={autopf}\{#AppPublisher}\{#AppName}
-DefaultGroupName={#AppName}
+; Preserve the install location and group used by previous versions.
+DefaultDirName={autopf}\{#AppPublisher}\Shutdown Trey
+DefaultGroupName=Shutdown Trey
 DisableProgramGroupPage=yes
 OutputDir=..\release
-OutputBaseFilename=Shutdown-Trey-Setup-v{#AppVersion}
+OutputBaseFilename=Shutdown-Tray-Setup-v{#AppVersion}
 SetupIconFile=..\Shutdown-WinUI3-Source\src\Shutdown\Assets\ShutdownTrey.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 WizardStyle=modern
@@ -54,8 +55,8 @@ Source: "https://aka.ms/dotnet/8.0/dotnet-runtime-win-x64.exe"; DestDir: "{tmp}"
 Source: "https://aka.ms/windowsappsdk/2.3/latest/windowsappruntimeinstall-x64.exe"; DestDir: "{tmp}"; DestName: "windowsappruntimeinstall-x64.exe"; ExternalSize: 113192760; Flags: external download ignoreversion; Check: not IsWindowsAppRuntimeInstalled
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"
-Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
+Name: "{group}\Shutdown Trey"; Filename: "{app}\{#AppExeName}"
+Name: "{autodesktop}\Shutdown Trey"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{tmp}\dotnet-runtime-8-win-x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Установка Microsoft .NET 8 Runtime..."; Flags: waituntilterminated; Check: not IsDotNet8Installed

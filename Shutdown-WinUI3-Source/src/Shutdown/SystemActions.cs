@@ -27,6 +27,9 @@ public static class SystemActions
 
     public static void Execute(PowerActionKind action)
     {
+        // Preview uses the real UI but can never invoke any OS action.
+        if (App.Preview) return;
+        if (!IsAvailable(action)) throw new InvalidOperationException("Action is unavailable.");
         switch (action)
         {
             case PowerActionKind.Shutdown:
@@ -44,6 +47,10 @@ public static class SystemActions
             case PowerActionKind.Lock:
                 if (!LockWorkStation()) throw new Win32Exception(Marshal.GetLastWin32Error());
                 break;
+            case PowerActionKind.Disconnect:
+                if (!RdpSession.IsCurrentSessionRemote()) return;
+                DisconnectRdp();
+                break;
         }
     }
 
@@ -56,6 +63,7 @@ public static class SystemActions
 
     public static void DisconnectRdp()
     {
+        if (App.Preview) return;
         Process.Start(new ProcessStartInfo
         {
             FileName = "tsdiscon.exe",

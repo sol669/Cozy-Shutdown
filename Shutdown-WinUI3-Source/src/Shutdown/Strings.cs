@@ -13,11 +13,13 @@ public static class Strings
         (true, PowerActionKind.Sleep) => "Сон",
         (true, PowerActionKind.Hibernate) => "Гибернация",
         (true, PowerActionKind.Lock) => "Блокировка",
+        (true, PowerActionKind.Disconnect) => "Отключиться",
         (false, PowerActionKind.Shutdown) => "Shut down",
         (false, PowerActionKind.Restart) => "Restart",
         (false, PowerActionKind.Sleep) => "Sleep",
         (false, PowerActionKind.Hibernate) => "Hibernate",
         (false, PowerActionKind.Lock) => "Lock",
+        (false, PowerActionKind.Disconnect) => "Disconnect",
         _ => action.ToString()
     };
 
@@ -59,11 +61,13 @@ public static class Strings
         (true, PowerActionKind.Sleep) => "Перевести компьютер в спящий режим?",
         (true, PowerActionKind.Hibernate) => "Перевести компьютер в режим гибернации?",
         (true, PowerActionKind.Lock) => "Заблокировать компьютер?",
+        (true, PowerActionKind.Disconnect) => "Отключиться от удаленного сеанса?",
         (false, PowerActionKind.Shutdown) => "Shut down the computer?",
         (false, PowerActionKind.Restart) => "Restart the computer?",
         (false, PowerActionKind.Sleep) => "Put the computer to sleep?",
         (false, PowerActionKind.Hibernate) => "Hibernate the computer?",
         (false, PowerActionKind.Lock) => "Lock the computer?",
+        (false, PowerActionKind.Disconnect) => "Disconnect from the remote session?",
         _ => ActionName(action)
     };
 

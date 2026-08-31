@@ -6,6 +6,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace ShutdownApp;
 
@@ -87,10 +88,11 @@ public sealed partial class ConfirmWindow : Window
             height));
     }
 
-    public static async Task<bool> ShowAsync(PowerActionKind action, int? seconds)
+    public static async Task<bool> ShowAsync(PowerActionKind action, int? seconds, CancellationToken cancellation = default)
     {
         var window = new ConfirmWindow(Strings.ConfirmQuestion(action), seconds);
         window.Activate();
+        using var registration = cancellation.Register(() => window.DispatcherQueue.TryEnqueue(() => window.Complete(false)));
         return await window._result.Task;
     }
 

@@ -2,108 +2,110 @@ name: Build Windows release
 
 on:
   push:
-    branches: [main]
     tags: ['v*']
   workflow_dispatch:
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: windows-latest
     timeout-minutes: 30
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up .NET 8
-        uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore
-        run: dotnet restore Shutdown-WinUI3-Source/src/Shutdown/Shutdown.csproj -r win-x64
-
-      - name: Publish offline self-contained app
-        run: dotnet publish Shutdown-WinUI3-Source/src/Shutdown/Shutdown.csproj -c Release -r win-x64 --self-contained true -p:Platform=x64 -p:EnableMsixTooling=true -o publish
-
-      - name: Create offline portable ZIP
-        shell: pwsh
-        run: Compress-Archive -Path publish\* -DestinationPath Shutdown-Trey-Portable-Offline-win-x64.zip -CompressionLevel Optimal
-
-      - name: Publish standard framework-dependent app
-        run: >
-          dotnet publish Shutdown-WinUI3-Source/src/Shutdown/Shutdown.csproj
-          -c Release
-          -r win-x64
-          --self-contained false
-          -p:Platform=x64
-          -p:WindowsAppSDKSelfContained=false
-          -p:PublishSingleFile=false
-          -p:IncludeNativeLibrariesForSelfExtract=false
-          -p:IncludeAllContentForSelfExtract=false
-          -o publish-standard
-
-      - name: Create standard portable ZIP
+      - name: Read and validate version
+        id: version
         shell: pwsh
         run: |
-          Copy-Item installer\README-Portable.txt publish-standard\README-Portable.txt
-          Compress-Archive -Path publish-standard\* -DestinationPath Shutdown-Trey-Portable-win-x64.zip -CompressionLevel Optimal
+          [xml]$project = Get-Content Shutdown-WinUI3-Source/src/Shutdown/Shutdown.csproj
+          $version = [string]$project.Project.PropertyGroup.Version
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
+            throw 'Tag and application version do not match.'
+          }
+          "value=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Verify action policy and settings migration
+        run: dotnet run --project tests/Shutdown.PolicyTests.csproj -c Release
+
+      - name: Publish offline app
+        run: >
+          dotnet publish Shutdown-WinUI3-Source/src/Shutdown/Shutdown.csproj
+          -c Release -r win-x64 --self-contained true -p:Platform=x64
+          -p:IntermediateOutputPath=obj/ReleaseOffline/ -p:OutputPath=bin/ReleaseOffline/
+          -o publish
+
+      - name: Publish standard app
+        run: >
+          dotnet publish Shutdown-WinUI3-Source/src/Shutdown/Shutdown.csproj
+          -c Release -r win-x64 --self-contained false -p:Platform=x64
+          -p:WindowsAppSDKSelfContained=false -p:PublishSingleFile=false
+          -p:IncludeNativeLibrariesForSelfExtract=false -p:IncludeAllContentForSelfExtract=false
+          -p:IntermediateOutputPath=obj/ReleaseStandard/ -p:OutputPath=bin/ReleaseStandard/
+          -o publish-standard
+
+      - name: Validate packages and create portable archives
+        shell: pwsh
+        run: |
+          $version = '${{ steps.version.outputs.value }}'
+          foreach ($folder in @('publish', 'publish-standard')) {
+            $actual = (Get-Item "$folder/Shutdown.exe").VersionInfo.FileVersion
+            if ($actual -ne "$version.0") { throw "Wrong executable version in $folder : $actual" }
+            foreach ($file in @('Shutdown.dll', 'Shutdown.runtimeconfig.json', 'Shutdown.pri', 'Assets/ShutdownTrey.ico')) {
+              if (-not (Test-Path "$folder/$file")) { throw "Missing $folder/$file" }
+            }
+            Copy-Item README.md "$folder/README.md"
+            Copy-Item LICENSE "$folder/LICENSE.txt"
+          }
+          foreach ($file in @('coreclr.dll', 'hostfxr.dll', 'Microsoft.UI.Xaml.dll')) {
+            if (-not (Test-Path "publish/$file")) { throw "Offline runtime missing: $file" }
+          }
+          if (Test-Path 'publish-standard/coreclr.dll') { throw 'Standard package contains offline runtime.' }
+          Copy-Item installer/README-Portable.txt publish-standard/README.txt
+          Copy-Item README-FULL.txt publish/README.txt
+          New-Item -ItemType Directory release -Force | Out-Null
+          Compress-Archive -Path publish/* -DestinationPath "release/Shutdown-Tray-Portable-Offline-v$version-win-x64.zip" -CompressionLevel Optimal
+          Compress-Archive -Path publish-standard/* -DestinationPath "release/Shutdown-Tray-Portable-v$version-win-x64.zip" -CompressionLevel Optimal
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
 
-      - name: Build offline installer
+      - name: Build both installers
         shell: pwsh
-        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.2 "installer\Shutdown.iss"'
+        run: |
+          $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $version = '${{ steps.version.outputs.value }}'
+          & $compiler "/DAppVersion=$version" "/DPublishDir=$env:GITHUB_WORKSPACE\publish" installer/Shutdown.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Offline installer failed.' }
+          & $compiler "/DAppVersion=$version" "/DPublishDir=$env:GITHUB_WORKSPACE\publish-standard" installer/Shutdown-Online.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Online installer failed.' }
+          $packages = @(Get-ChildItem release -File)
+          if ($packages.Count -ne 4) { throw 'Expected exactly four release packages.' }
+          $packages | Get-FileHash -Algorithm SHA256 | Format-List
 
-      - name: Build standard online installer
-        shell: pwsh
-        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" /DAppVersion=1.1.2 "installer\Shutdown-Online.iss"'
-
-      - name: Upload offline portable artifact
+      - name: Keep all four packages
         uses: actions/upload-artifact@v4
         with:
-          name: Shutdown-Portable-Offline-win-x64
-          path: Shutdown-Trey-Portable-Offline-win-x64.zip
-          if-no-files-found: error
-          compression-level: 9
-
-      - name: Upload offline installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Shutdown-Trey-Setup-Offline-win-x64
-          path: release/Shutdown-Trey-Setup-Offline-v1.1.2.exe
+          name: Shutdown-Tray-v${{ steps.version.outputs.value }}-packages
+          path: release/*
           if-no-files-found: error
           compression-level: 0
 
-      - name: Upload standard portable artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Shutdown-Portable-win-x64
-          path: Shutdown-Trey-Portable-win-x64.zip
-          if-no-files-found: error
-          compression-level: 9
-
-      - name: Upload standard installer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Shutdown-Trey-Setup-win-x64
-          path: release/Shutdown-Trey-Setup-v1.1.2.exe
-          if-no-files-found: error
-          compression-level: 0
-
-      - name: Add files to GitHub release
-        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+      - name: Prepare draft release for verification
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.1.2
-          files: |
-            Shutdown-Trey-Portable-win-x64.zip
-            release/Shutdown-Trey-Setup-v1.1.2.exe
-            Shutdown-Trey-Portable-Offline-win-x64.zip
-            release/Shutdown-Trey-Setup-Offline-v1.1.2.exe
+          tag_name: ${{ github.ref_name }}
+          name: Shutdown Tray ${{ steps.version.outputs.value }}
+          body_path: RELEASE-NOTES.md
+          draft: true
+          files: release/*
           fail_on_unmatched_files: true
-          overwrite_files: true

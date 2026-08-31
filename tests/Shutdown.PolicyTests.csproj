@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings></PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../Shutdown-WinUI3-Source/src/Shutdown/AppSettings.cs" Link="AppSettings.cs" />
+    <Compile Include="../Shutdown-WinUI3-Source/src/Shutdown/ActionPolicy.cs" Link="ActionPolicy.cs" />
+  </ItemGroup>
+</Project>

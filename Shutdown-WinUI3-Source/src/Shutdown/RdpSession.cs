@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Linq;
 
 namespace ShutdownApp;
 
@@ -7,6 +8,8 @@ internal static class RdpSession
 {
     public static bool IsCurrentSessionRemote()
     {
+        if (App.Preview && Environment.GetCommandLineArgs().Contains("--preview-local")) return false;
+        if (App.Preview && Environment.GetCommandLineArgs().Contains("--preview-remote")) return true;
         nint buffer = nint.Zero;
         try
         {

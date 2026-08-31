@@ -2,3 +2,8 @@
 .dotnet-install.ps1
 **/bin/
 **/obj/
+artifacts/
+publish/
+publish-standard/
+release/
+**/preview.png

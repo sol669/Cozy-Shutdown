@@ -14,15 +14,15 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
     <SelfContained>true</SelfContained>
     <EnableMsixTooling>true</EnableMsixTooling>
-    <PublishSingleFile>true</PublishSingleFile>
+    <PublishSingleFile>false</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <PublishTrimmed>false</PublishTrimmed>
     <ApplicationIcon>Assets\ShutdownTrey.ico</ApplicationIcon>
     <AssemblyName>Shutdown</AssemblyName>
-    <Version>1.1.2</Version>
+    <Version>1.2.1</Version>
     <Authors>sol669</Authors>
-    <Product>Shutdown Trey</Product>
+    <Product>Shutdown Tray</Product>
     <Description>Native Windows tray utility for immediate and scheduled power actions.</Description>
   </PropertyGroup>
 

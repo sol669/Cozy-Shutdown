@@ -62,9 +62,8 @@ def save_ico(image, path):
     image.save(path, format="ICO", sizes=SIZES)
 
 OUT.mkdir(parents=True,exist_ok=True)
-logo=app_icon()
-logo.save(OUT/"ShutdownTrey.png")
-save_ico(logo, OUT/"ShutdownTrey.ico")
+# The approved red application icon is packaged by build-app-icon.cjs.
+# Do not overwrite it when rebuilding monochrome action icons.
 
 glyphs={"shutdown":0xE7E8,"restart":0xE72C,"sleep":0xE708,"hibernate":0xE708,"lock":0xE72E}
 for name,code in glyphs.items():

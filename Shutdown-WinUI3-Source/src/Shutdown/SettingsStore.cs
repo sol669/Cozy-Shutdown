@@ -18,6 +18,7 @@ public sealed class SettingsStore
 
     public void Load()
     {
+        if (App.Preview) { Current = new AppSettings { StartWithWindows = false }; return; }
         try
         {
             Directory.CreateDirectory(Folder);
@@ -28,12 +29,7 @@ public sealed class SettingsStore
                 return;
             }
 
-            Current = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath)) ?? new AppSettings();
-            Current.CountdownSeconds = Math.Clamp(Current.CountdownSeconds, 1, 300);
-            if (Current.EnabledActions == EnabledPowerActions.None)
-                Current.EnabledActions = EnabledPowerActions.Shutdown | EnabledPowerActions.Restart;
-            if (!Current.EnabledActions.HasFlag(Current.DefaultAction.ToFlag()))
-                Current.DefaultAction = Current.EnabledActions.FirstAction();
+            Current = SettingsCodec.Read(File.ReadAllText(FilePath));
         }
         catch (Exception ex)
         {
@@ -44,20 +40,27 @@ public sealed class SettingsStore
 
     public void Save()
     {
+        if (App.Preview) return;
         Directory.CreateDirectory(Folder);
-        var json = JsonSerializer.Serialize(Current, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(FilePath, json);
+        string temporary = FilePath + ".tmp";
+        File.WriteAllText(temporary, SettingsCodec.Write(Current));
+        if (File.Exists(FilePath)) File.Replace(temporary, FilePath, FilePath + ".bak");
+        else File.Move(temporary, FilePath);
         ApplyAutostart();
     }
 
     public void Replace(AppSettings value)
     {
+        var previous = Current;
+        ActionPolicy.Normalize(value);
         Current = value;
-        Save();
+        try { Save(); }
+        catch { Current = previous; throw; }
     }
 
     public void ApplyAutostart()
     {
+        if (App.Preview) return;
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true)
@@ -78,6 +81,11 @@ public sealed class SettingsStore
     {
         try
         {
+            if (App.Preview)
+            {
+                File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "preview.log"), $"[{DateTime.Now:O}] {ex}\r\n");
+                return;
+            }
             Directory.CreateDirectory(Folder);
             File.AppendAllText(Path.Combine(Folder, "error.log"),
                 $"[{DateTime.Now:O}] {ex}\r\n\r\n");
@@ -86,25 +94,5 @@ public sealed class SettingsStore
         {
             Debug.WriteLine(ex);
         }
-    }
-}
-
-internal static class PowerActionSettingsExtensions
-{
-    public static EnabledPowerActions ToFlag(this PowerActionKind action) => action switch
-    {
-        PowerActionKind.Shutdown => EnabledPowerActions.Shutdown,
-        PowerActionKind.Restart => EnabledPowerActions.Restart,
-        PowerActionKind.Sleep => EnabledPowerActions.Sleep,
-        PowerActionKind.Hibernate => EnabledPowerActions.Hibernate,
-        PowerActionKind.Lock => EnabledPowerActions.Lock,
-        _ => EnabledPowerActions.None
-    };
-
-    public static PowerActionKind FirstAction(this EnabledPowerActions actions)
-    {
-        foreach (PowerActionKind action in Enum.GetValues<PowerActionKind>())
-            if (actions.HasFlag(action.ToFlag())) return action;
-        return PowerActionKind.Shutdown;
     }
 }

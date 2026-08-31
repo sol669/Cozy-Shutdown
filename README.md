@@ -1,52 +1,59 @@
-# Shutdown Trey
+# Shutdown Tray
 
-Минималистичная утилита для Windows 10 и Windows 11, работающая из системного трея.
+[Русский](#русский) · [English](#english)
 
-## Возможности
+## Русский
 
-- выключение, перезагрузка, сон, гибернация и блокировка из меню трея;
-- выбор отображаемых действий и действия по двойному клику;
-- подтверждение без таймера или с обратным отсчётом;
-- отложенные действия через заданный интервал или в указанное время;
-- безопасная обработка пропущенного таймера после сна компьютера;
-- динамические значок и подсказка в трее;
-- выход из RDP и глобальная горячая клавиша `Ctrl+Alt+Shift+Q`;
-- автозапуск вместе с Windows;
-- светлая, тёмная и системная темы;
-- русский и английский интерфейс;
-- поддержка масштабирования 4K;
-- защита от запуска нескольких копий.
+**Shutdown Tray** — компактная утилита для Windows, которая добавляет управление питанием в системный трей.
 
-## Системные требования
+Можно настроить меню под себя, выбрать главное действие для обычного и удалённого сеанса, а также отложить выполнение команды.
 
-- Windows 10 версии 1809 или новее;
-- Windows 11;
-- 64-разрядная система (x64).
+### Возможности
 
-Проверено на Windows 10 22H2 и Windows 11.
+- Выключение, перезагрузка, сон, гибернация и блокировка
+- Отключение от RDP-сеанса
+- Главное действие отдельно для локального и удалённого сеанса
+- Подтверждение и обратный отсчёт перед действием
+- Таймер: через интервал или к заданному времени
+- Автозапуск, темы и русский/английский интерфейс
 
-## Загрузка
+Поддерживаются Windows 10 и Windows 11 (x64).
 
-### Рекомендуемые версии
+### Скачать
 
-- `Shutdown-Trey-Setup-v1.1.2.exe` — компактный онлайн-установщик. Проверяет наличие .NET 8 и Windows App Runtime и загружает с серверов Microsoft только недостающие компоненты.
-- `Shutdown-Trey-Portable-win-x64.zip` — компактная portable-версия. Требует, чтобы необходимые компоненты уже были установлены.
+| Вариант | Описание |
+| --- | --- |
+| [Установщик](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Setup-v1.2.1.exe) | Загружает недостающие компоненты Microsoft |
+| [Автономный установщик](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Setup-Offline-v1.2.1.exe) | Все компоненты внутри, интернет не нужен |
+| [Portable](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Portable-v1.2.1-win-x64.zip) | Без установки; нужны .NET 8 Runtime и Windows App Runtime 2.3 (x64) |
+| [Автономная Portable](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Portable-Offline-v1.2.1-win-x64.zip) | Распакуйте всю папку и запустите Shutdown.exe |
 
-### Автономные версии
+## English
 
-- `Shutdown-Trey-Setup-Offline-v1.1.2.exe` — автономный установщик со всеми компонентами внутри.
-- `Shutdown-Trey-Portable-Offline-win-x64.zip` — автономная portable-версия, не требующая интернета и предварительной установки компонентов.
+**Shutdown Tray** is a compact Windows utility for power controls in the system tray.
 
-Все варианты имеют одинаковые функции. Компоненты, установленные обычным установщиком, являются общими и могут использоваться другими приложениями.
+Configure the menu, choose a primary action for local and Remote Desktop sessions, and schedule commands when needed.
 
-## Автор
+### Features
 
-[sol669](https://github.com/sol669)
+- Shut down, restart, sleep, hibernate, and lock
+- Disconnect from an RDP session
+- Separate primary actions for local and remote sessions
+- Confirmation and countdown before an action
+- Schedule by interval or a specific time
+- Autostart, themes, and Russian/English interface
 
-## Распространение
+Supports Windows 10 and Windows 11 (x64).
 
-Программа распространяется бесплатно по лицензии MIT. Её можно использовать, копировать и изменять при сохранении уведомления об авторских правах, имени автора `sol669` и текста лицензии.
+### Download
+
+| Edition | Description |
+| --- | --- |
+| [Installer](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Setup-v1.2.1.exe) | Downloads missing Microsoft components |
+| [Offline installer](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Setup-Offline-v1.2.1.exe) | All components included; no internet required |
+| [Portable](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Portable-v1.2.1-win-x64.zip) | Requires .NET 8 Runtime and Windows App Runtime 2.3 (x64) |
+| [Offline Portable](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Portable-Offline-v1.2.1-win-x64.zip) | Extract the entire folder and run Shutdown.exe |
 
 ## License
 
-MIT
+MIT · [sol669](https://github.com/sol669)
