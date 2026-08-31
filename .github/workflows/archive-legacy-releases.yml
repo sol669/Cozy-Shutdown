@@ -1,0 +1,47 @@
+name: Archive legacy releases before cleanup
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Download and verify the four legacy releases
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory backup | Out-Null
+          $manifests = @()
+          foreach ($tag in @('v1.0.0', 'v1.0.1', 'v1.1.1', 'v1.1.2')) {
+            $json = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$tag"
+            if ($LASTEXITCODE -ne 0) { throw "Cannot read $tag" }
+            $release = $json | ConvertFrom-Json
+            New-Item -ItemType Directory "backup/$tag" | Out-Null
+            gh release download $tag --repo $env:GITHUB_REPOSITORY --dir "backup/$tag"
+            if ($LASTEXITCODE -ne 0) { throw "Cannot download $tag" }
+            foreach ($asset in $release.assets) {
+              $path = "backup/$tag/$($asset.name)"
+              if ((Get-Item $path).Length -ne $asset.size) { throw "Wrong size: $path" }
+              $hash = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
+              if ($asset.digest -and $asset.digest -ne "sha256:$hash") { throw "Wrong hash: $path" }
+              $manifests += [ordered]@{ tag=$tag; name=$asset.name; size=$asset.size; sha256=$hash }
+            }
+            $json | Set-Content "backup/$tag/release.json" -Encoding utf8
+            Write-Output "Verified $tag : $($release.assets.Count) assets"
+          }
+          $manifests | ConvertTo-Json | Set-Content backup/SHA256.json -Encoding utf8
+      - name: Keep a recoverable archive outside the Releases page
+        uses: actions/upload-artifact@v4
+        with:
+          name: Shutdown-legacy-releases-before-1.2.1
+          path: backup/
+          retention-days: 90
+          compression-level: 0
+          if-no-files-found: error
