@@ -24,6 +24,7 @@ public sealed class TrayService : IDisposable
     private readonly DispatcherQueueTimer _schedulerTimer;
     private nint _window;
     private nint _trayIcon;
+    private bool _ownsTrayIcon;
     private string? _trayIconKey;
     private uint _taskbarCreatedMessage;
     private NativeMethods.NOTIFYICONDATA _notifyData;
@@ -89,11 +90,19 @@ public sealed class TrayService : IDisposable
         string key = $"tray_{action}{scheduled}_{tone}.ico";
         if (disconnect && !File.Exists(Path.Combine(AppContext.BaseDirectory, "Assets", key))) key = $"tray_rdp_{tone}.ico";
         if (_trayIconKey == key && _trayIcon != nint.Zero) return;
-        if (_trayIcon != nint.Zero) NativeMethods.DestroyIcon(_trayIcon);
+        DestroyTrayIcon();
         string path = Path.Combine(AppContext.BaseDirectory, "Assets", key);
         _trayIcon = NativeMethods.LoadImage(nint.Zero, path, NativeMethods.IMAGE_ICON, 0, 0,
             NativeMethods.LR_LOADFROMFILE | NativeMethods.LR_DEFAULTSIZE);
+        _ownsTrayIcon = _trayIcon != nint.Zero;
         _trayIconKey = key;
+    }
+
+    private void DestroyTrayIcon()
+    {
+        if (_trayIcon != nint.Zero && _ownsTrayIcon) NativeMethods.DestroyIcon(_trayIcon);
+        _trayIcon = nint.Zero;
+        _ownsTrayIcon = false;
     }
 
     private void AddTrayIcon()
@@ -123,6 +132,7 @@ public sealed class TrayService : IDisposable
         {
             if (msg == _taskbarCreatedMessage)
             {
+                // Explorer lost its icon table; register again without restarting the app.
                 AddTrayIcon();
                 return nint.Zero;
             }
@@ -436,7 +446,7 @@ public sealed class TrayService : IDisposable
             NativeMethods.DestroyWindow(_window);
             _window = nint.Zero;
         }
-        if (_trayIcon != nint.Zero) { NativeMethods.DestroyIcon(_trayIcon); _trayIcon = nint.Zero; }
+        DestroyTrayIcon();
     }
 }
 
