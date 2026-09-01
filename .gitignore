@@ -6,4 +6,7 @@ artifacts/
 publish/
 publish-standard/
 release/
+local-release/
+installer/prerequisites/*.exe
+installer/prerequisites/*.msi
 **/preview.png

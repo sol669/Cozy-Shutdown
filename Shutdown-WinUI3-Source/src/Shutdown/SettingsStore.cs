@@ -8,11 +8,12 @@ namespace ShutdownApp;
 
 public sealed class SettingsStore
 {
-    private static readonly string Folder = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Shutdown");
+    // The installer grants users write access only to this folder. Portable builds use the
+    // same layout next to their executable, so all app-owned state travels with the app.
+    private static readonly string Folder = Path.Combine(AppContext.BaseDirectory, "Data");
     private static readonly string FilePath = Path.Combine(Folder, "settings.json");
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string RunValueName = "Shutdown";
+    private const string RunValueName = AppBranding.AutostartValueName;
 
     public AppSettings Current { get; private set; } = new();
 

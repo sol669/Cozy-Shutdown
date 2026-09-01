@@ -52,7 +52,7 @@ public sealed partial class SettingsWindow : Window
     private void ConfigureWindow()
     {
         nint hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-        AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "ShutdownTrey.ico"));
+        AppBranding.ApplyWindowIcons(AppWindow);
         NativeTheme.ApplyWindowTitleBar(_store.Current.Theme, hwnd);
         double scale = Math.Max(1, GetDpiForWindow(hwnd) / 96.0);
         NativeMethods.GetCursorPos(out var cursor);
@@ -106,10 +106,10 @@ public sealed partial class SettingsWindow : Window
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var info = new StackPanel { Opacity = .68, Margin = new Thickness(8, 0, 0, 0) };
-        info.Children.Add(new TextBlock { Text = "Shutdown Tray 1.2.1" + (App.Preview ? " · Preview" : "") });
+        info.Children.Add(new TextBlock { Text = "Cozy Shutdown 1.0.0" + (App.Preview ? " · Preview" : "") });
         var links = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
         links.Children.Add(new TextBlock { Text = "sol669 ·", VerticalAlignment = VerticalAlignment.Center });
-        links.Children.Add(new HyperlinkButton { Content = "GitHub", NavigateUri = new Uri("https://github.com/sol669/Shutdown"), Padding = new Thickness(0) });
+        links.Children.Add(new HyperlinkButton { Content = "GitHub", NavigateUri = new Uri("https://github.com/sol669/Cozy-Shutdown"), Padding = new Thickness(0) });
         info.Children.Add(links);
         footer.Children.Add(info);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };

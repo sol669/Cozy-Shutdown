@@ -1,10 +1,10 @@
-# Shutdown Tray
+# Cozy Shutdown
 
 [Русский](#русский) · [English](#english)
 
 ## Русский
 
-**Shutdown Tray** — компактная утилита для Windows, которая добавляет управление питанием в системный трей.
+**Cozy Shutdown** — компактная утилита для Windows, которая добавляет управление питанием в системный трей.
 
 Можно настроить меню под себя, выбрать главное действие для обычного и удалённого сеанса, а также отложить выполнение команды.
 
@@ -23,14 +23,14 @@
 
 | Вариант | Описание |
 | --- | --- |
-| [Установщик](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Setup-v1.2.1.exe) | Загружает недостающие компоненты Microsoft |
-| [Автономный установщик](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Setup-Offline-v1.2.1.exe) | Все компоненты внутри, интернет не нужен |
-| [Portable](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Portable-v1.2.1-win-x64.zip) | Без установки; нужны .NET 8 Runtime и Windows App Runtime 2.3 (x64) |
-| [Автономная Portable](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Portable-Offline-v1.2.1-win-x64.zip) | Распакуйте всю папку и запустите Shutdown.exe |
+| Установщик | Загружает недостающие компоненты Microsoft |
+| Автономный установщик | Все компоненты внутри, интернет не нужен |
+| Portable | Без установки; нужны .NET 8 Runtime и Windows App Runtime 2.3 (x64) |
+| Автономная Portable | Папка `Prerequisites` содержит официальные установщики на случай, если компоненты ещё не установлены |
 
 ## English
 
-**Shutdown Tray** is a compact Windows utility for power controls in the system tray.
+**Cozy Shutdown** is a compact Windows utility for power controls in the system tray.
 
 Configure the menu, choose a primary action for local and Remote Desktop sessions, and schedule commands when needed.
 
@@ -49,10 +49,10 @@ Supports Windows 10 and Windows 11 (x64).
 
 | Edition | Description |
 | --- | --- |
-| [Installer](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Setup-v1.2.1.exe) | Downloads missing Microsoft components |
-| [Offline installer](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Setup-Offline-v1.2.1.exe) | All components included; no internet required |
-| [Portable](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Portable-v1.2.1-win-x64.zip) | Requires .NET 8 Runtime and Windows App Runtime 2.3 (x64) |
-| [Offline Portable](https://github.com/sol669/Shutdown/releases/download/v1.2.1/Shutdown-Tray-Portable-Offline-v1.2.1-win-x64.zip) | Extract the entire folder and run Shutdown.exe |
+| Installer | Downloads missing Microsoft components |
+| Offline installer | All components included; no internet required |
+| Portable | Requires .NET 8 Runtime and Windows App Runtime 2.3 (x64) |
+| Offline Portable | The `Prerequisites` folder contains the official installers if the components are not installed yet |
 
 ## License
 

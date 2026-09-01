@@ -2,7 +2,7 @@
     x:Class="ShutdownApp.ScheduleWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Shutdown Tray">
+    Title="Cozy Shutdown">
     <Grid x:Name="RootGrid" Padding="28,24" RowSpacing="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

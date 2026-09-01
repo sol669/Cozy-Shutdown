@@ -25,7 +25,7 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _singleInstance = new Mutex(true, Preview ? "sol669.Shutdown.Preview" : "sol669.Shutdown.Singleton", out bool createdNew);
+        _singleInstance = new Mutex(true, Preview ? "sol669.CozyShutdown.Preview" : "sol669.CozyShutdown.Singleton", out bool createdNew);
         if (!createdNew)
         {
             Exit();
@@ -43,6 +43,7 @@ public partial class App : Application
     private void CreateLifetimeWindow()
     {
         _lifetimeWindow = new Window();
+        AppBranding.ApplyWindowIcons(_lifetimeWindow.AppWindow);
         _lifetimeWindow.AppWindow.IsShownInSwitchers = false;
         _lifetimeWindow.AppWindow.Move(new Windows.Graphics.PointInt32(-32000, -32000));
         _lifetimeWindow.Activate();

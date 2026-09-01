@@ -52,7 +52,7 @@ public sealed partial class ScheduleWindow : Window
         NativeTheme.ApplyWindowTitleBar(App.Settings.Current.Theme, hwnd);
         WindowId id = Win32Interop.GetWindowIdFromWindow(hwnd);
         AppWindow appWindow = AppWindow.GetFromWindowId(id);
-        appWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "ShutdownTrey.ico"));
+        AppBranding.ApplyWindowIcons(appWindow);
         appWindow.SetPresenter(AppWindowPresenterKind.Overlapped);
         if (appWindow.Presenter is OverlappedPresenter presenter)
         {

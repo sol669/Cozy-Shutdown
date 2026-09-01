@@ -53,7 +53,7 @@ public sealed class TrayService : IDisposable
 
     public void Initialize()
     {
-        string className = App.Preview ? "sol669.Shutdown.PreviewTrayWindow" : "sol669.Shutdown.TrayWindow";
+        string className = App.Preview ? "sol669.CozyShutdown.PreviewTrayWindow" : "sol669.CozyShutdown.TrayWindow";
         nint instance = NativeMethods.GetModuleHandle(null);
         var wc = new NativeMethods.WNDCLASSEX
         {
@@ -61,7 +61,7 @@ public sealed class TrayService : IDisposable
             hInstance = instance, lpszClassName = className
         };
         NativeMethods.RegisterClassEx(ref wc);
-        _window = NativeMethods.CreateWindowEx(0, className, "Shutdown Trey", 0, 0, 0, 0, 0,
+        _window = NativeMethods.CreateWindowEx(0, className, AppBranding.Name, 0, 0, 0, 0, 0,
             nint.Zero, nint.Zero, instance, nint.Zero);
         _taskbarCreatedMessage = NativeMethods.RegisterWindowMessage("TaskbarCreated");
         NativeMethods.WTSRegisterSessionNotification(_window, NativeMethods.NOTIFY_FOR_THIS_SESSION);
@@ -405,14 +405,14 @@ public sealed class TrayService : IDisposable
     private void ShowNotification(string text)
     {
         _notifyData.uFlags = NativeMethods.NIF_INFO;
-        _notifyData.szInfoTitle = "Shutdown Tray";
+        _notifyData.szInfoTitle = AppBranding.Name;
         _notifyData.szInfo = text;
         _notifyData.dwInfoFlags = NativeMethods.NIIF_INFO;
         NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_MODIFY, ref _notifyData);
     }
 
     private string CurrentTrayTip() => Strings.TrayTip(
-        CurrentDefault is PowerActionKind action ? Strings.ActionName(action) : "Shutdown Tray",
+        CurrentDefault is PowerActionKind action ? Strings.ActionName(action) : AppBranding.Name,
         _scheduledAction,
         _scheduledFor);
 
