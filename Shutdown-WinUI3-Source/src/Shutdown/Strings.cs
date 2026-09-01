@@ -24,7 +24,7 @@ public static class Strings
     };
 
     public static string DisconnectRdp => Ru ? "Отключиться" : "Disconnect";
-    public static string Settings => Ru ? "Настройки" : "Settings";
+    public static string Settings => Ru ? "Настройки…" : "Settings…";
     public static string Exit => Ru ? "Выход" : "Exit";
     public static string ScheduledAction => Ru ? "Отложенное действие" : "Scheduled action";
     public static string In30Minutes => Ru ? "Через 30 минут" : "In 30 minutes";

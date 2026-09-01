@@ -106,7 +106,7 @@ public sealed partial class SettingsWindow : Window
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var info = new StackPanel { Opacity = .68, Margin = new Thickness(8, 0, 0, 0) };
-        info.Children.Add(new TextBlock { Text = "Cozy Shutdown 1.0.0" + (App.Preview ? " · Preview" : "") });
+        info.Children.Add(new TextBlock { Text = "Cozy Shutdown 1.0.1" + (App.Preview ? " · Preview" : "") });
         var links = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
         links.Children.Add(new TextBlock { Text = "sol669 ·", VerticalAlignment = VerticalAlignment.Center });
         links.Children.Add(new HyperlinkButton { Content = "GitHub", NavigateUri = new Uri("https://github.com/sol669/Cozy-Shutdown"), Padding = new Thickness(0) });

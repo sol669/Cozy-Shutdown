@@ -4,7 +4,7 @@
 #define AppURL "https://github.com/sol669/Cozy-Shutdown"
 
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.0.1"
 #endif
 
 #ifndef PublishDir
@@ -86,6 +86,6 @@ var
   ResultCode: Integer;
 begin
   Result := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
-    '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "if (Get-AppxPackage -Name ''Microsoft.WindowsAppRuntime.2.3'' -ErrorAction SilentlyContinue) { exit 0 } else { exit 1 }"',
+    '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "if (Get-AppxPackage -Name ''Microsoft.WindowsAppRuntime.2'' -ErrorAction SilentlyContinue | Where-Object { [version]$_.Version -ge [version]''2.3.0.0'' } | Select-Object -First 1) { exit 0 } else { exit 1 }"',
     '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
 end;

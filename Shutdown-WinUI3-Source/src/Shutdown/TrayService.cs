@@ -173,14 +173,12 @@ public sealed class TrayService : IDisposable
             for (int index = 0; index < actions.Count; index++)
             {
                 var action = actions[index];
-                if (index == 1) NativeMethods.AppendMenu(menu, NativeMethods.MF_SEPARATOR, 0, null);
                 NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING, ActionBase + (uint)action, Strings.ActionName(action));
             }
             if (actions.Count > 0) NativeMethods.SetMenuDefaultItem(menu, ActionBase + (uint)actions[0], 0);
 
             if (_settings.Current.ShowScheduledActions)
             {
-                NativeMethods.AppendMenu(menu, NativeMethods.MF_SEPARATOR, 0, null);
                 if (_scheduledAction is not null && _scheduledFor is not null)
                 {
                     NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING | NativeMethods.MF_GRAYED, 0,
@@ -204,8 +202,8 @@ public sealed class TrayService : IDisposable
                     (nuint)scheduledMenu, Strings.ScheduledAction);
             }
 
-            NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING, IdSettings, Strings.Settings);
             NativeMethods.AppendMenu(menu, NativeMethods.MF_SEPARATOR, 0, null);
+            NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING, IdSettings, Strings.Settings);
             NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING, IdExit, Strings.Exit);
             NativeMethods.GetCursorPos(out var point);
             NativeMethods.SetForegroundWindow(_window);

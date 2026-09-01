@@ -1,4 +1,4 @@
-Cozy Shutdown Portable 1.0.0
+Cozy Shutdown Portable 1.0.1
 ============================
 
 Это стандартная компактная portable-версия.
