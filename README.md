@@ -2,6 +2,8 @@
 
 [Русский](#русский) · [English](#english)
 
+<p align="center"><img src="docs/images/icon.png" width="180" alt="Cozy Shutdown icon"></p>
+
 ## Русский
 
 **Cozy Shutdown** — компактная утилита для Windows, которая добавляет управление питанием в системный трей.
@@ -18,6 +20,14 @@
 - Автозапуск, темы и русский/английский интерфейс
 
 Поддерживаются Windows 10 и Windows 11 (x64).
+
+### Скриншоты
+
+<p align="center"><img src="docs/images/settings-general.png" width="520" alt="Основные настройки Cozy Shutdown"></p>
+
+<p align="center"><img src="docs/images/settings-tray-actions.png" width="520" alt="Настройка действий в трее"></p>
+
+<p align="center"><img src="docs/images/tray-menu.png" width="360" alt="Меню Cozy Shutdown в системном трее"></p>
 
 ### Скачать
 
