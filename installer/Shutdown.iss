@@ -4,7 +4,7 @@
 #define AppURL "https://github.com/sol669/Cozy-Shutdown"
 
 #ifndef AppVersion
-  #define AppVersion "1.0.1"
+  #define AppVersion "1.0.2"
 #endif
 
 #ifndef PublishDir

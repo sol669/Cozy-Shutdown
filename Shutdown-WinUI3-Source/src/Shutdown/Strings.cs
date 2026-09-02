@@ -41,9 +41,7 @@ public static class Strings
 
     public static string TrayTip(string defaultAction, PowerActionKind? scheduled, DateTime? when)
     {
-        string primary = Ru
-            ? $"{defaultAction} — двойной щелчок"
-            : $"{defaultAction} — double-click";
+        string primary = defaultAction;
         if (scheduled is null || when is null) return primary;
         TimeSpan left = when.Value - DateTime.Now;
         string remaining = left.TotalSeconds <= 60
