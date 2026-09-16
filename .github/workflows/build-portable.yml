@@ -27,7 +27,9 @@ jobs:
         shell: pwsh
         run: |
           [xml]$project = Get-Content Shutdown-WinUI3-Source/src/Shutdown/Shutdown.csproj
-          $version = [string]$project.Project.PropertyGroup.Version
+          # The project has configuration-specific property groups without a Version.
+          # Select the one actual version value instead of casting the whole XML list.
+          $version = [string]($project.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1)
           if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") {
             throw 'Tag and application version do not match.'
           }
