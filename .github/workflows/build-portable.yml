@@ -67,7 +67,9 @@ jobs:
             Copy-Item README.md "$folder/README.md"
             Copy-Item LICENSE "$folder/LICENSE.txt"
           }
-          foreach ($file in @('coreclr.dll', 'hostfxr.dll', 'Microsoft.UI.Xaml.dll')) {
+          # WinUI is supplied by the Windows App Runtime installer; the .NET runtime
+          # remains embedded in the offline package.
+          foreach ($file in @('coreclr.dll', 'hostfxr.dll')) {
             if (-not (Test-Path "publish/$file")) { throw "Offline runtime missing: $file" }
           }
           if (Test-Path 'publish-standard/coreclr.dll') { throw 'Standard package contains offline runtime.' }
