@@ -7,7 +7,12 @@ namespace ShutdownApp;
 
 public partial class App : Application
 {
+#if DEBUG
+    // Local UI harness: intentionally unavailable in Release builds.
     internal static bool Preview { get; } = Environment.GetCommandLineArgs().Contains("--preview");
+#else
+    internal const bool Preview = false;
+#endif
     private Mutex? _singleInstance;
     private Window? _lifetimeWindow;
     internal static TrayService? Tray { get; private set; }
@@ -37,6 +42,7 @@ public partial class App : Application
         CreateLifetimeWindow();
         Tray = new TrayService(Settings);
         Tray.Initialize();
+        DesktopClockService.Initialize(Settings);
         if (Preview || Environment.GetCommandLineArgs().Contains("--settings")) Tray.ShowSettings();
     }
 
@@ -52,6 +58,7 @@ public partial class App : Application
 
     internal static void Quit()
     {
+        DesktopClockService.Dispose();
         Tray?.Dispose();
         Current.Exit();
     }

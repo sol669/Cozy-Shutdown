@@ -54,6 +54,13 @@ public sealed class AppSettings
     public bool StartWithWindows { get; set; } = true;
     public AppTheme Theme { get; set; } = AppTheme.System;
     public AppLanguage Language { get; set; } = DetectLanguage();
+    public bool ShowClock { get; set; } = false;
+    public bool ShowCalendar { get; set; } = true;
+    public int ClockScale { get; set; } = 100;
+    public string ClockTextColor { get; set; } = "#FFFFFF";
+    public int ClockOpacity { get; set; } = 100;
+    public int ClockPositionX { get; set; } = 50;
+    public int ClockPositionY { get; set; } = 25;
 
     public AppSettings Clone() => (AppSettings)MemberwiseClone();
 

@@ -47,6 +47,14 @@ public static class ActionPolicy
         if (!Enum.IsDefined(settings.ConfirmationMode)) settings.ConfirmationMode = ConfirmationMode.Countdown;
         if (!Enum.IsDefined(settings.Theme)) settings.Theme = AppTheme.System;
         if (!Enum.IsDefined(settings.Language)) settings.Language = AppLanguage.English;
+        settings.ClockScale = Math.Clamp(settings.ClockScale, 50, 200);
+        settings.ClockOpacity = Math.Clamp(settings.ClockOpacity, 0, 100);
+        settings.ClockPositionX = Math.Clamp(settings.ClockPositionX, 0, 100);
+        settings.ClockPositionY = Math.Clamp(settings.ClockPositionY, 0, 100);
+        string color = (settings.ClockTextColor ?? "#FFFFFF").Trim().TrimStart('#');
+        if (color.Length == 3) color = string.Concat(color.Select(c => new string(c, 2)));
+        if (color.Length != 6 || !color.All(Uri.IsHexDigit)) color = "FFFFFF";
+        settings.ClockTextColor = "#" + color.ToUpperInvariant();
     }
 }
 

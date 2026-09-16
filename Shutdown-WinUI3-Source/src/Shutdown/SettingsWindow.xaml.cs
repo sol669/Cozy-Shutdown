@@ -22,11 +22,11 @@ public sealed partial class SettingsWindow : Window
     private bool _loading, _allowClose, _dialogOpen;
     private Button? _save;
     private TextBlock? _validation;
-    private bool _validCountdown = true;
+    private bool _validCountdown = true, _validClockColor = true;
     private bool Ru => _store.Current.Language == AppLanguage.Russian;
     private string L(string ru, string en) => Ru ? ru : en;
-    private bool Dirty => !_validCountdown || SettingsCodec.Write(_draft) != SettingsCodec.Write(_store.Current);
-    private bool Valid => _validCountdown && ActionPolicy.Menu(_draft, false, SystemActions.IsAvailable).Count > 0 &&
+    private bool Dirty => !_validCountdown || !_validClockColor || SettingsCodec.Write(_draft) != SettingsCodec.Write(_store.Current);
+    private bool Valid => _validCountdown && _validClockColor && ActionPolicy.Menu(_draft, false, SystemActions.IsAvailable).Count > 0 &&
         ActionPolicy.Menu(_draft, true, SystemActions.IsAvailable).Count > 0;
 
     public SettingsWindow(SettingsStore store)
@@ -52,6 +52,7 @@ public sealed partial class SettingsWindow : Window
     private void ConfigureWindow()
     {
         nint hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
+        Title = L("Настройки Cozy Shutdown", "Cozy Shutdown Settings");
         AppBranding.ApplyWindowIcons(AppWindow);
         NativeTheme.ApplyWindowTitleBar(_store.Current.Theme, hwnd);
         double scale = Math.Max(1, GetDpiForWindow(hwnd) / 96.0);
@@ -79,20 +80,14 @@ public sealed partial class SettingsWindow : Window
         var main = new Grid();
         main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
         main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        var nav = new StackPanel { Margin = new Thickness(20, 8, 16, 12), Spacing = 5 };
-        nav.Children.Add(new Border
-        {
-            Height = 64,
-            Child = new TextBlock { Text = L("Настройки", "Settings"), Style = ResourceStyle("TitleTextBlockStyle"),
-                VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) }
-        });
+        var nav = new StackPanel { Margin = new Thickness(20, 28, 16, 12), Spacing = 5 };
         nav.Children.Add(Navigation(L("Основные", "General"), "general"));
         nav.Children.Add(Navigation(L("Действия в трее", "Tray actions"), "actions"));
+        nav.Children.Add(Navigation(L("Часы и календарь", "clock"), "clock"));
         main.Children.Add(nav);
         var panel = new StackPanel { Width = 540, HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(24, 8, 0, 0), Spacing = 5 };
-        panel.Children.Add(new Border { Height = 64 });
-        if (_page == "general") BuildGeneral(panel); else BuildActions(panel);
+            Margin = new Thickness(24, 28, 0, 0), Spacing = 5 };
+        if (_page == "general") BuildGeneral(panel); else if (_page == "actions") BuildActions(panel); else BuildClock(panel);
         _validation = new TextBlock { TextWrapping = TextWrapping.Wrap, Opacity = .68, Margin = new Thickness(2, 5, 0, 0) };
         panel.Children.Add(_validation);
         var scroll = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
@@ -106,7 +101,7 @@ public sealed partial class SettingsWindow : Window
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var info = new StackPanel { Opacity = .68, Margin = new Thickness(8, 0, 0, 0) };
-        info.Children.Add(new TextBlock { Text = "Cozy Shutdown 1.0.2" + (App.Preview ? " · Preview" : "") });
+        info.Children.Add(new TextBlock { Text = "Cozy Shutdown 1.0.3" + (App.Preview ? " · Preview" : "") });
         var links = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
         links.Children.Add(new TextBlock { Text = "sol669 ·", VerticalAlignment = VerticalAlignment.Center });
         links.Children.Add(new HyperlinkButton { Content = "GitHub", NavigateUri = new Uri("https://github.com/sol669/Cozy-Shutdown"), Padding = new Thickness(0) });
@@ -229,6 +224,52 @@ public sealed partial class SettingsWindow : Window
             }));
     }
 
+    private void BuildClock(StackPanel panel)
+    {
+        panel.Children.Add(Header(L("Система", "System")));
+        panel.Children.Add(ToggleRow(L("Часы на рабочем столе", "Desktop clock"), _draft.ShowClock, true, value => { _draft.ShowClock = value; BuildShell(); }));
+        panel.Children.Add(ToggleRow(L("Показывать календарь", "Show calendar"), _draft.ShowCalendar, _draft.ShowClock,
+            value => _draft.ShowCalendar = value, preserveValueWhenUnavailable: true));
+        panel.Children.Add(Header(L("Положение", "Position")));
+        panel.Children.Add(Row(L("Размер", "Size"), PercentageSlider(50, 200, _draft.ClockScale, value => _draft.ClockScale = value)));
+        panel.Children.Add(Row(L("По горизонтали", "Horizontal"), PercentageSlider(0, 100, _draft.ClockPositionX, value => _draft.ClockPositionX = value)));
+        panel.Children.Add(Row(L("По вертикали", "Vertical"), PercentageSlider(0, 100, _draft.ClockPositionY, value => _draft.ClockPositionY = value)));
+        panel.Children.Add(Header(L("Вид", "Appearance")));
+        panel.Children.Add(Row(L("Непрозрачность", "Opacity"), PercentageSlider(0, 100, _draft.ClockOpacity, value => _draft.ClockOpacity = value)));
+        var color = new TextBox { Text = _draft.ClockTextColor.TrimStart('#'), Width = ValueWidth, Height = 34,
+            PlaceholderText = "FFF", Style = ResourceStyle("AppDeviceAliasTextBoxStyle") };
+        color.TextChanged += (_, _) =>
+        {
+            if (_loading) return;
+            string text = color.Text.Trim().TrimStart('#');
+            _validClockColor = (text.Length == 3 || text.Length == 6) && text.All(Uri.IsHexDigit);
+            if (_validClockColor) _draft.ClockTextColor = NormalizeHex(text);
+            UpdateState();
+        };
+        panel.Children.Add(Row(L("Цвет текста", "Text color"), color));
+    }
+
+    internal void ReloadFromStore()
+    {
+        _draft = _store.Current.Clone();
+        _validCountdown = _validClockColor = true;
+        BuildShell();
+    }
+
+    private Grid PercentageSlider(int minimum, int maximum, int value, Action<int> changed)
+    {
+        var row = new Grid { Width = ValueWidth, ColumnSpacing = 10 };
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var slider = new Slider { Minimum = minimum, Maximum = maximum, StepFrequency = 25, Value = Math.Clamp(value, minimum, maximum) };
+        var display = new TextBlock { Text = $"{(int)slider.Value}%", Width = 42, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+        slider.ValueChanged += (_, e) => { int next = (int)Math.Round(e.NewValue / 25) * 25; next = Math.Clamp(next, minimum, maximum); display.Text = $"{next}%"; if (!_loading) { changed(next); UpdateState(); } };
+        Grid.SetColumn(display, 1); row.Children.Add(slider); row.Children.Add(display);
+        return row;
+    }
+
+    private static string NormalizeHex(string text) => "#" + (text.Length == 3 ? string.Concat(text.Select(c => new string(c, 2))) : text).ToUpperInvariant();
+
     private void ReconcileDefaults()
     {
         var local = ActionPolicy.Menu(_draft, false, SystemActions.IsAvailable);
@@ -246,9 +287,9 @@ public sealed partial class SettingsWindow : Window
         return combo;
     }
 
-    private Border ToggleRow(string label, bool enabled, bool available, Action<bool> changed)
+    private Border ToggleRow(string label, bool enabled, bool available, Action<bool> changed, bool preserveValueWhenUnavailable = false)
     {
-        var toggle = new ToggleSwitch { IsOn = enabled && available, IsEnabled = available,
+        var toggle = new ToggleSwitch { IsOn = enabled && (available || preserveValueWhenUnavailable), IsEnabled = available,
             OffContent = "", OnContent = "", MinWidth = 0, Width = 44, HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center };
         AutomationProperties.SetName(toggle, label);
@@ -292,6 +333,7 @@ public sealed partial class SettingsWindow : Window
         if (_validation is not null)
         {
             _validation.Text = !_validCountdown ? L("Введите целое число от 1 до 300 секунд.", "Enter a whole number from 1 to 300 seconds.") :
+                !_validClockColor ? L("Введите код цвета: FFF или FFFFFF.", "Enter a color code: FFF or FFFFFF.") :
                 !Valid ? L("Оставьте хотя бы одно доступное действие для локального и удаленного сеансов.", "Keep at least one available action for local and remote sessions.") : "";
             _validation.Visibility = Valid ? Visibility.Collapsed : Visibility.Visible;
         }
@@ -304,6 +346,7 @@ public sealed partial class SettingsWindow : Window
         {
             _store.Replace(_draft.Clone());
             _draft = _store.Current.Clone();
+            DesktopClockService.Refresh();
             App.Tray?.RefreshAfterSettingsChanged();
             BuildShell();
             return true;
@@ -331,7 +374,7 @@ public sealed partial class SettingsWindow : Window
                 SecondaryButtonText = L("Не сохранять", "Don't save"), CloseButtonText = L("Отмена", "Cancel"), DefaultButton = ContentDialogButton.Close };
             var result = await dialog.ShowAsync();
             if (result == ContentDialogResult.Primary) return await SaveAsync();
-            if (result == ContentDialogResult.Secondary) { _draft = _store.Current.Clone(); _validCountdown = true; return true; }
+            if (result == ContentDialogResult.Secondary) { _draft = _store.Current.Clone(); _validCountdown = _validClockColor = true; return true; }
             return false;
         }
         finally { _dialogOpen = false; }
@@ -342,7 +385,9 @@ public sealed partial class SettingsWindow : Window
         if (_dialogOpen || !await CanLeaveAsync()) return;
         _allowClose = true;
         Close();
+#if DEBUG
         if (App.Preview) App.Quit();
+#endif
     }
 
     private void ApplyTheme()

@@ -17,6 +17,7 @@ public static class SystemActions
     private const uint TOKEN_ADJUST_PRIVILEGES = 0x0020;
     private const uint TOKEN_QUERY = 0x0008;
     private const uint SE_PRIVILEGE_ENABLED = 0x00000002;
+    private const int ERROR_NOT_ALL_ASSIGNED = 1300;
 
     public static bool IsAvailable(PowerActionKind action) => action switch
     {
@@ -27,8 +28,10 @@ public static class SystemActions
 
     public static void Execute(PowerActionKind action)
     {
+#if DEBUG
         // Preview uses the real UI but can never invoke any OS action.
         if (App.Preview) return;
+#endif
         if (!IsAvailable(action)) throw new InvalidOperationException("Action is unavailable.");
         switch (action)
         {
@@ -63,7 +66,9 @@ public static class SystemActions
 
     public static void DisconnectRdp()
     {
+#if DEBUG
         if (App.Preview) return;
+#endif
         Process.Start(new ProcessStartInfo
         {
             FileName = "tsdiscon.exe",
@@ -94,7 +99,9 @@ public static class SystemActions
                 Privileges = new LUID_AND_ATTRIBUTES { Luid = luid, Attributes = SE_PRIVILEGE_ENABLED }
             };
 
-            if (!AdjustTokenPrivileges(token, false, ref privileges, 0, nint.Zero, nint.Zero))
+            Marshal.SetLastPInvokeError(0);
+            if (!AdjustTokenPrivileges(token, false, ref privileges, 0, nint.Zero, nint.Zero) ||
+                Marshal.GetLastWin32Error() == ERROR_NOT_ALL_ASSIGNED)
                 throw new Win32Exception(Marshal.GetLastWin32Error());
         }
         finally

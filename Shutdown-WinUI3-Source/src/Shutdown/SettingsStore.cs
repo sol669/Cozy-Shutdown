@@ -19,7 +19,9 @@ public sealed class SettingsStore
 
     public void Load()
     {
+#if DEBUG
         if (App.Preview) { Current = new AppSettings { StartWithWindows = false }; return; }
+#endif
         try
         {
             Directory.CreateDirectory(Folder);
@@ -41,7 +43,9 @@ public sealed class SettingsStore
 
     public void Save()
     {
+#if DEBUG
         if (App.Preview) return;
+#endif
         Directory.CreateDirectory(Folder);
         string temporary = FilePath + ".tmp";
         File.WriteAllText(temporary, SettingsCodec.Write(Current));
@@ -61,7 +65,9 @@ public sealed class SettingsStore
 
     public void ApplyAutostart()
     {
+#if DEBUG
         if (App.Preview) return;
+#endif
         try
         {
             using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true)
@@ -82,11 +88,13 @@ public sealed class SettingsStore
     {
         try
         {
+#if DEBUG
             if (App.Preview)
             {
                 File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "preview.log"), $"[{DateTime.Now:O}] {ex}\r\n");
                 return;
             }
+#endif
             Directory.CreateDirectory(Folder);
             File.AppendAllText(Path.Combine(Folder, "error.log"),
                 $"[{DateTime.Now:O}] {ex}\r\n\r\n");

@@ -57,9 +57,9 @@ jobs:
         run: |
           $version = '${{ steps.version.outputs.value }}'
           foreach ($folder in @('publish', 'publish-standard')) {
-            $actual = (Get-Item "$folder/Shutdown.exe").VersionInfo.FileVersion
+            $actual = (Get-Item "$folder/CozyShutdown.exe").VersionInfo.FileVersion
             if ($actual -ne "$version.0") { throw "Wrong executable version in $folder : $actual" }
-            foreach ($file in @('Shutdown.dll', 'Shutdown.runtimeconfig.json', 'Shutdown.pri', 'Assets/ShutdownTrey.ico')) {
+            foreach ($file in @('CozyShutdown.dll', 'CozyShutdown.runtimeconfig.json', 'CozyShutdown.pri', 'Assets/ShutdownTrey.ico')) {
               if (-not (Test-Path "$folder/$file")) { throw "Missing $folder/$file" }
             }
             Copy-Item README.md "$folder/README.md"
@@ -70,10 +70,10 @@ jobs:
           }
           if (Test-Path 'publish-standard/coreclr.dll') { throw 'Standard package contains offline runtime.' }
           Copy-Item installer/README-Portable.txt publish-standard/README.txt
-          Copy-Item README-FULL.txt publish/README.txt
+          Copy-Item README.md publish/README.txt
           New-Item -ItemType Directory release -Force | Out-Null
-          Compress-Archive -Path publish/* -DestinationPath "release/Shutdown-Tray-Portable-Offline-v$version-win-x64.zip" -CompressionLevel Optimal
-          Compress-Archive -Path publish-standard/* -DestinationPath "release/Shutdown-Tray-Portable-v$version-win-x64.zip" -CompressionLevel Optimal
+          Compress-Archive -Path publish/* -DestinationPath "release/Cozy-Shutdown-Portable-Offline-v$version-win-x64.zip" -CompressionLevel Optimal
+          Compress-Archive -Path publish-standard/* -DestinationPath "release/Cozy-Shutdown-Portable-v$version-win-x64.zip" -CompressionLevel Optimal
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
@@ -94,7 +94,7 @@ jobs:
       - name: Keep all four packages
         uses: actions/upload-artifact@v4
         with:
-          name: Shutdown-Tray-v${{ steps.version.outputs.value }}-packages
+          name: Cozy-Shutdown-v${{ steps.version.outputs.value }}-packages
           path: release/*
           if-no-files-found: error
           compression-level: 0
@@ -104,7 +104,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Shutdown Tray ${{ steps.version.outputs.value }}
+          name: Cozy Shutdown ${{ steps.version.outputs.value }}
           body_path: RELEASE-NOTES.md
           draft: true
           files: release/*

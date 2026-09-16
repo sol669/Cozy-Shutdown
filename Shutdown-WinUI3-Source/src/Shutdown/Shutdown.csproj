@@ -20,9 +20,10 @@
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
     <PublishTrimmed>false</PublishTrimmed>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>Assets\ShutdownTrey.ico</ApplicationIcon>
     <AssemblyName>CozyShutdown</AssemblyName>
-    <Version>1.0.2</Version>
+    <Version>1.0.3</Version>
     <Authors>sol669</Authors>
     <Product>Cozy Shutdown</Product>
     <Description>Native Windows tray utility for immediate and scheduled power actions.</Description>
@@ -44,11 +45,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Assets\*.ico">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="Assets\ShutdownTrey.png">
+    <Content Include="Assets\ShutdownTrey.ico;Assets\tray_*.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>

@@ -21,6 +21,16 @@ Check(v120.EnabledActions == (EnabledPowerActions)35 && v120.RemoteDefaultAction
 var corrupt = SettingsCodec.Read("""{"DefaultAction":99,"RemoteDefaultAction":99,"EnabledActions":2048,"RemoteEnabledActions":0,"CountdownSeconds":999,"Theme":42,"Language":42} """);
 Check(corrupt.EnabledActions == EnabledPowerActions.Shutdown, "Normalize invalid configuration");
 Check(corrupt.CountdownSeconds == 300 && corrupt.Theme == AppTheme.System, "Bound invalid values");
+var clockDefaults = SettingsCodec.Read("""{"DefaultAction":0} """);
+Check(!clockDefaults.ShowClock && clockDefaults.ShowCalendar && clockDefaults.ClockScale == 100 &&
+    clockDefaults.ClockOpacity == 100 && clockDefaults.ClockPositionX == 50 && clockDefaults.ClockPositionY == 25 &&
+    clockDefaults.ClockTextColor == "#FFFFFF", "Old settings receive safe clock defaults");
+var clockNormalized = SettingsCodec.Read("""{"ClockScale":999,"ClockOpacity":-1,"ClockPositionX":-1,"ClockPositionY":999,"ClockTextColor":"0af"} """);
+Check(clockNormalized.ClockScale == 200 && clockNormalized.ClockOpacity == 0 &&
+    clockNormalized.ClockPositionX == 0 && clockNormalized.ClockPositionY == 100 &&
+    clockNormalized.ClockTextColor == "#00AAFF", "Normalize clock values and short hex color");
+var invalidClockColor = SettingsCodec.Read("""{"ClockTextColor":"not-a-color"} """);
+Check(invalidClockColor.ClockTextColor == "#FFFFFF", "Reject invalid clock color");
 
 // Exhaustively exercise the unified enabled list, hardware availability, defaults and contexts.
 foreach (bool remote in new[] { false, true })

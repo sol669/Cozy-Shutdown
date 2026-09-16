@@ -17,6 +17,7 @@ public sealed class TrayService : IDisposable
     private const uint IdCancelScheduled = 2900;
     private const uint IdSettings = 3002;
     private const uint IdExit = 3003;
+    private const uint IdShowClock = 3004;
 
     private readonly SettingsStore _settings;
     private readonly NativeMethods.WndProc _wndProc;
@@ -37,6 +38,7 @@ public sealed class TrayService : IDisposable
     private bool _isRdpSession;
     private bool _scheduledRemote;
     private bool _actionInProgress;
+    private bool _taskbarDark;
     private CancellationTokenSource? _scheduledWarningCancellation;
     private List<PowerActionKind> CurrentActions => ActionPolicy.Menu(_settings.Current, _isRdpSession, SystemActions.IsAvailable);
     private PowerActionKind? CurrentDefault => CurrentActions.Count > 0 ? CurrentActions[0] : null;
@@ -47,7 +49,7 @@ public sealed class TrayService : IDisposable
         _wndProc = WindowProc;
         _dispatcher = DispatcherQueue.GetForCurrentThread();
         _schedulerTimer = _dispatcher.CreateTimer();
-        _schedulerTimer.Interval = TimeSpan.FromSeconds(1);
+        _schedulerTimer.Interval = TimeSpan.FromSeconds(30);
         _schedulerTimer.Tick += (_, _) => SchedulerTick();
     }
 
@@ -66,6 +68,7 @@ public sealed class TrayService : IDisposable
         _taskbarCreatedMessage = NativeMethods.RegisterWindowMessage("TaskbarCreated");
         NativeMethods.WTSRegisterSessionNotification(_window, NativeMethods.NOTIFY_FOR_THIS_SESSION);
         _isRdpSession = RdpSession.IsCurrentSessionRemote();
+        _taskbarDark = NativeTheme.IsTaskbarDark();
 
         LoadTrayIcon();
         _notifyData = new NativeMethods.NOTIFYICONDATA
@@ -77,7 +80,6 @@ public sealed class TrayService : IDisposable
             szInfo = string.Empty, szInfoTitle = string.Empty
         };
         AddTrayIcon();
-        _schedulerTimer.Start();
     }
 
     private void LoadTrayIcon()
@@ -86,7 +88,7 @@ public sealed class TrayService : IDisposable
         bool disconnect = primary == PowerActionKind.Disconnect;
         string action = disconnect ? "rdp" : (primary ?? PowerActionKind.Shutdown).ToString().ToLowerInvariant();
         string scheduled = _scheduledAction is null ? string.Empty : "_scheduled";
-        string tone = NativeTheme.IsTaskbarDark() ? "white" : "black";
+        string tone = _taskbarDark ? "white" : "black";
         string key = $"tray_{action}{scheduled}_{tone}.ico";
         if (disconnect && !File.Exists(Path.Combine(AppContext.BaseDirectory, "Assets", key))) key = $"tray_rdp_{tone}.ico";
         if (_trayIconKey == key && _trayIcon != nint.Zero) return;
@@ -122,7 +124,14 @@ public sealed class TrayService : IDisposable
              !ActionPolicy.Enabled(_settings.Current, _scheduledRemote).HasFlag(_scheduledAction.Value.ToFlag()) ||
              !SystemActions.IsAvailable(_scheduledAction.Value)))
             CancelSchedule(true);
+        ConfigureScheduleTimer();
         LoadTrayIcon();
+        UpdateTray();
+    }
+
+    private void RefreshTrayTheme()
+    {
+        _taskbarDark = NativeTheme.IsTaskbarDark();
         UpdateTray();
     }
 
@@ -134,6 +143,7 @@ public sealed class TrayService : IDisposable
             {
                 // Explorer lost its icon table; register again without restarting the app.
                 AddTrayIcon();
+                DesktopClockService.RecreateAfterShellRestart();
                 return nint.Zero;
             }
             if (msg == TrayMessage)
@@ -145,7 +155,12 @@ public sealed class TrayService : IDisposable
                 return nint.Zero;
             }
             if (msg == 0x001A || msg == 0x031A) // Settings/theme change, including taskbar icon contrast.
-                _dispatcher.TryEnqueue(UpdateTray);
+                _dispatcher.TryEnqueue(RefreshTrayTheme);
+            if (msg == NativeMethods.WM_DISPLAYCHANGE)
+            {
+                _dispatcher.TryEnqueue(DesktopClockService.InvalidateDisplayLayout);
+                return nint.Zero;
+            }
             if (msg == NativeMethods.WM_POWERBROADCAST && (uint)wParam == NativeMethods.PBT_APMRESUMEAUTOMATIC)
             {
                 _dispatcher.TryEnqueue(HandleResume);
@@ -203,6 +218,9 @@ public sealed class TrayService : IDisposable
             }
 
             NativeMethods.AppendMenu(menu, NativeMethods.MF_SEPARATOR, 0, null);
+            NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING | (_settings.Current.ShowClock ? NativeMethods.MF_CHECKED : 0),
+                IdShowClock, _settings.Current.Language == AppLanguage.Russian ? "Показать часы" : "Show clock");
+            NativeMethods.AppendMenu(menu, NativeMethods.MF_SEPARATOR, 0, null);
             NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING, IdSettings, Strings.Settings);
             NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING, IdExit, Strings.Exit);
             NativeMethods.GetCursorPos(out var point);
@@ -231,6 +249,13 @@ public sealed class TrayService : IDisposable
         switch (command)
         {
             case IdCancelScheduled: CancelSchedule(true); break;
+            case IdShowClock:
+                var next = _settings.Current.Clone();
+                next.ShowClock = !next.ShowClock;
+                _settings.Replace(next);
+                DesktopClockService.Refresh();
+                _settingsWindow?.ReloadFromStore();
+                break;
             case IdSettings: ShowSettings(); break;
             case IdExit: _ = RunSafelyAsync(ExitAsync); break;
         }
@@ -306,6 +331,7 @@ public sealed class TrayService : IDisposable
         _warningOpen = false;
         _lastScheduleCheck = DateTime.Now;
         _scheduleGeneration++;
+        ConfigureScheduleTimer();
         UpdateTray();
         ShowNotification(Strings.ScheduledNotification(action, when.Value));
     }
@@ -315,9 +341,13 @@ public sealed class TrayService : IDisposable
         DateTime now = DateTime.Now;
         if (_scheduledAction is null || _scheduledFor is null)
         {
-            _lastScheduleCheck = now;
+            _schedulerTimer.Stop();
             return;
         }
+
+        TimeSpan remaining = _scheduledFor.Value - now;
+        if (remaining <= TimeSpan.FromSeconds(90) && _schedulerTimer.Interval > TimeSpan.FromSeconds(1))
+            _schedulerTimer.Interval = TimeSpan.FromSeconds(1);
         UpdateTray();
         TimeSpan gap = now - _lastScheduleCheck;
         _lastScheduleCheck = now;
@@ -361,6 +391,7 @@ public sealed class TrayService : IDisposable
         if (_scheduledAction is not null && _scheduledFor is not null && DateTime.Now >= _scheduledFor.Value)
             HandleMissedSchedule();
         _lastScheduleCheck = DateTime.Now;
+        ConfigureScheduleTimer();
     }
 
     private void HandleMissedSchedule()
@@ -387,7 +418,24 @@ public sealed class TrayService : IDisposable
         _scheduledFor = null;
         _warningOpen = false;
         _scheduleGeneration++;
+        ConfigureScheduleTimer();
         UpdateTray();
+    }
+
+    private void ConfigureScheduleTimer()
+    {
+        if (_scheduledAction is null || _scheduledFor is null)
+        {
+            _schedulerTimer.Stop();
+            return;
+        }
+
+        TimeSpan remaining = _scheduledFor.Value - DateTime.Now;
+        _schedulerTimer.Interval = remaining <= TimeSpan.FromSeconds(90)
+            ? TimeSpan.FromSeconds(1)
+            : TimeSpan.FromSeconds(30);
+        _schedulerTimer.Stop();
+        _schedulerTimer.Start();
     }
 
     private void UpdateTray()
