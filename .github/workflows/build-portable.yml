@@ -82,6 +82,14 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
 
+      - name: Download offline installer prerequisites
+        shell: pwsh
+        run: |
+          $prerequisites = Join-Path $env:GITHUB_WORKSPACE 'installer/prerequisites'
+          New-Item -ItemType Directory -Force -Path $prerequisites | Out-Null
+          Invoke-WebRequest 'https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.30/windowsdesktop-runtime-8.0.30-win-x64.exe' -OutFile "$prerequisites/windowsdesktop-runtime-8.0.30-win-x64.exe"
+          Invoke-WebRequest 'https://download.microsoft.com/download/cbb0f858-7923-48f0-bc2e-ba8ae187b65c/WindowsAppRuntimeInstall-x64.exe' -OutFile "$prerequisites/WindowsAppRuntimeInstall-x64-2.3.1.exe"
+
       - name: Build both installers
         shell: pwsh
         run: |
