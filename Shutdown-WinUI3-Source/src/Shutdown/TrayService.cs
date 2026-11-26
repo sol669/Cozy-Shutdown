@@ -18,6 +18,13 @@ public sealed class TrayService : IDisposable
     private const uint IdSettings = 3002;
     private const uint IdExit = 3003;
     private const uint IdShowClock = 3004;
+    private const uint IdConnectRdp = 3005;
+    private const uint IdShutdownRdp = 3006;
+    private const uint IdRestartRdp = 3007;
+    private CancellationTokenSource? _trayRdpOperation;
+    private CancellationTokenSource? _trayRdpMonitor;
+    private RdpProfile? _trayRdpCheckedProfile;
+    private RdpAvailability _trayRdpAvailability;
 
     private readonly SettingsStore _settings;
     private readonly NativeMethods.WndProc _wndProc;
@@ -80,6 +87,7 @@ public sealed class TrayService : IDisposable
             szInfo = string.Empty, szInfoTitle = string.Empty
         };
         AddTrayIcon();
+        ConfigureRdpMonitor();
     }
 
     private void LoadTrayIcon()
@@ -127,6 +135,7 @@ public sealed class TrayService : IDisposable
         ConfigureScheduleTimer();
         LoadTrayIcon();
         UpdateTray();
+        ConfigureRdpMonitor();
     }
 
     private void RefreshTrayTheme()
@@ -182,6 +191,9 @@ public sealed class TrayService : IDisposable
         RefreshSessionState();
         NativeTheme.Apply(_settings.Current.Theme, _window);
         nint menu = NativeMethods.CreatePopupMenu();
+        var profile = _settings.Current.Rdp;
+        RdpAvailability? availability = _trayRdpCheckedProfile == profile ? _trayRdpAvailability : null;
+        RdpPrimaryAction primary = RdpClient.PrimaryAction(profile, availability);
         try
         {
             var actions = CurrentActions;
@@ -217,10 +229,21 @@ public sealed class TrayService : IDisposable
                     (nuint)scheduledMenu, Strings.ScheduledAction);
             }
 
+            if (_settings.Current.ShowRdpInTray)
+            {
+                NativeMethods.AppendMenu(menu, NativeMethods.MF_SEPARATOR, 0, null);
+                string name = profile.PcName.Trim().Replace("&", "&&");
+                string target = name.Length > 0 ? name : Strings.Ru ? "удалённый ПК" : "remote PC";
+                bool idle = _trayRdpOperation is null;
+                uint powerFlags = NativeMethods.MF_STRING | (idle && availability is { MpsReady: true } ? 0 : NativeMethods.MF_GRAYED);
+                NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING |
+                    (profile.CanConnect && idle ? 0 : NativeMethods.MF_GRAYED), IdConnectRdp, Strings.RdpActionName(primary, name));
+                NativeMethods.AppendMenu(menu, powerFlags, IdShutdownRdp, Strings.Ru ? $"Выключить {target}" : $"Shut down {target}");
+                NativeMethods.AppendMenu(menu, powerFlags, IdRestartRdp, Strings.Ru ? $"Перезапустить {target}" : $"Restart {target}");
+            }
             NativeMethods.AppendMenu(menu, NativeMethods.MF_SEPARATOR, 0, null);
             NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING | (_settings.Current.ShowClock ? NativeMethods.MF_CHECKED : 0),
-                IdShowClock, _settings.Current.Language == AppLanguage.Russian ? "Показать часы" : "Show clock");
-            NativeMethods.AppendMenu(menu, NativeMethods.MF_SEPARATOR, 0, null);
+                IdShowClock, Strings.Ru ? "Показать часы" : "Show clock");
             NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING, IdSettings, Strings.Settings);
             NativeMethods.AppendMenu(menu, NativeMethods.MF_STRING, IdExit, Strings.Exit);
             NativeMethods.GetCursorPos(out var point);
@@ -228,12 +251,12 @@ public sealed class TrayService : IDisposable
             uint command = NativeMethods.TrackPopupMenu(menu, NativeMethods.TPM_RIGHTBUTTON | NativeMethods.TPM_RETURNCMD,
                 point.X, point.Y, 0, _window, nint.Zero);
             NativeMethods.PostMessage(_window, 0, 0, 0);
-            _dispatcher.TryEnqueue(() => ExecuteCommand(command));
+            _dispatcher.TryEnqueue(() => ExecuteCommand(command, profile, primary));
         }
         finally { NativeMethods.DestroyMenu(menu); }
     }
 
-    private void ExecuteCommand(uint command)
+    private void ExecuteCommand(uint command, RdpProfile profile, RdpPrimaryAction primary)
     {
         if (command >= ActionBase && command < ActionBase + 6)
         {
@@ -257,8 +280,96 @@ public sealed class TrayService : IDisposable
                 _settingsWindow?.ReloadFromStore();
                 break;
             case IdSettings: ShowSettings(); break;
+            case IdConnectRdp:
+                if (IsCurrentRdpProfile(profile) && profile.CanConnect)
+                    _ = RunSafelyAsync(() => RunRdpFromTrayAsync(async token =>
+                    {
+                        var result = await RdpClient.StartAndConnectAsync(profile,
+                            waking => ShowNotification(Strings.RdpWaiting(waking)), token, intended: primary);
+                        if (result != RdpStartResult.Connected) ShowNotification(Strings.RdpResult(result));
+                    }));
+                break;
+            case IdShutdownRdp:
+            case IdRestartRdp:
+                if (IsCurrentRdpProfile(profile))
+                    _ = RunSafelyAsync(() => RunRdpFromTrayAsync(token => PowerFromTrayAsync(profile,
+                        command == IdRestartRdp ? PowerActionKind.Restart : PowerActionKind.Shutdown, token)));
+                break;
             case IdExit: _ = RunSafelyAsync(ExitAsync); break;
         }
+    }
+
+    private bool IsCurrentRdpProfile(RdpProfile profile) => _settings.Current.ShowRdpInTray && _settings.Current.Rdp == profile;
+
+    private void ConfigureRdpMonitor()
+    {
+        if (!_settings.Current.ShowRdpInTray)
+        {
+            _trayRdpMonitor?.Cancel();
+            _trayRdpMonitor = null;
+            _trayRdpCheckedProfile = null;
+            _trayRdpOperation?.Cancel();
+        }
+        else if (_trayRdpMonitor is null) _ = MonitorRdpAsync();
+    }
+
+    private async Task MonitorRdpAsync()
+    {
+        using var monitor = new CancellationTokenSource();
+        _trayRdpMonitor = monitor;
+        try
+        {
+            while (!monitor.IsCancellationRequested)
+            {
+                var profile = _settings.Current.Rdp;
+                var availability = await RdpClient.GetAvailabilityAsync(profile, monitor.Token);
+                if (!monitor.IsCancellationRequested && IsCurrentRdpProfile(profile))
+                {
+                    _trayRdpCheckedProfile = profile;
+                    _trayRdpAvailability = availability;
+                }
+                await Task.Delay(TimeSpan.FromSeconds(5), monitor.Token);
+            }
+        }
+        catch (OperationCanceledException) when (monitor.IsCancellationRequested) {}
+        catch (Exception ex) { SettingsStore.Log(ex); }
+        finally { if (ReferenceEquals(_trayRdpMonitor, monitor)) _trayRdpMonitor = null; }
+    }
+
+    private async Task PowerFromTrayAsync(RdpProfile profile, PowerActionKind action, CancellationToken token)
+    {
+        if (!profile.TryGetServer(out var server)) return;
+        string name = profile.PcName.Length == 0 ? server.Host : profile.PcName;
+        string question = (Strings.Ru, action) switch
+        {
+            (true, PowerActionKind.Restart) => $"Перезапустить {name}?",
+            (true, _) => $"Завершить работу {name}?",
+            (false, PowerActionKind.Restart) => $"Restart {name}?",
+            _ => $"Shut down {name}?"
+        };
+        if (!await ConfirmWindow.ShowMessageAsync($"{question}\n{server.Authority}") || !IsCurrentRdpProfile(profile)) return;
+        if (!await MpsClient.IsAvailableAsync(profile, token))
+        {
+            ShowNotification(Strings.MpsNotAvailable);
+            return;
+        }
+        token.ThrowIfCancellationRequested();
+        if (!IsCurrentRdpProfile(profile)) return;
+        await MpsClient.SendPowerAsync(profile, action);
+        ShowNotification(Strings.Ru ? "Сервер принял команду." : "The server accepted the command.");
+    }
+
+    private async Task RunRdpFromTrayAsync(Func<CancellationToken, Task> action)
+    {
+        if (_trayRdpOperation is not null) return;
+        using var operation = new CancellationTokenSource();
+        _trayRdpOperation = operation;
+        try
+        {
+            await action(operation.Token);
+        }
+        catch (OperationCanceledException) when (operation.IsCancellationRequested) {}
+        finally { _trayRdpOperation = null; }
     }
 
     private async Task ExitAsync()
@@ -457,7 +568,7 @@ public sealed class TrayService : IDisposable
         NativeMethods.Shell_NotifyIcon(NativeMethods.NIM_MODIFY, ref _notifyData);
     }
 
-    private string CurrentTrayTip() => Strings.TrayTip(
+    private string CurrentTrayTip() => (App.LocalTest ? "Cozy Shutdown " + AppBranding.Version + " Test · " : "") + Strings.TrayTip(
         CurrentDefault is PowerActionKind action ? Strings.ActionName(action) : AppBranding.Name,
         _scheduledAction,
         _scheduledFor);
@@ -473,16 +584,18 @@ public sealed class TrayService : IDisposable
         }
     }
 
-    public void ShowSettings()
+    public void ShowSettings(string initialPage = "general")
     {
         if (_settingsWindow is not null) { _settingsWindow.Activate(); return; }
-        _settingsWindow = new SettingsWindow(_settings);
+        _settingsWindow = new SettingsWindow(_settings, initialPage);
         _settingsWindow.Closed += (_, _) => _settingsWindow = null;
         _settingsWindow.Activate();
     }
 
     public void Dispose()
     {
+        _trayRdpOperation?.Cancel();
+        _trayRdpMonitor?.Cancel();
         _schedulerTimer.Stop();
         _scheduledWarningCancellation?.Cancel();
         if (_window != nint.Zero)

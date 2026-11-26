@@ -3,5 +3,8 @@
   <ItemGroup>
     <Compile Include="../Shutdown-WinUI3-Source/src/Shutdown/AppSettings.cs" Link="AppSettings.cs" />
     <Compile Include="../Shutdown-WinUI3-Source/src/Shutdown/ActionPolicy.cs" Link="ActionPolicy.cs" />
+    <Compile Include="../Shutdown-WinUI3-Source/src/Shutdown/RdpProfile.cs" Link="RdpProfile.cs" />
+    <Compile Include="../Shutdown-WinUI3-Source/src/Shutdown/RdpClient.cs" Link="RdpClient.cs" />
+    <Compile Include="../Shutdown-WinUI3-Source/src/Shutdown/MpsClient.cs" Link="MpsClient.cs" />
   </ItemGroup>
 </Project>

@@ -16,6 +16,9 @@ namespace ShutdownApp;
 public sealed partial class SettingsWindow : Window
 {
     private const double ValueWidth = 244;
+    private const double NavigationWidth = 280;
+    private const double SettingsInset = 24;
+    private const double ContentWidth = 540;
     private readonly SettingsStore _store;
     private AppSettings _draft;
     private string _page = "general";
@@ -26,14 +29,27 @@ public sealed partial class SettingsWindow : Window
     private bool Ru => _store.Current.Language == AppLanguage.Russian;
     private string L(string ru, string en) => Ru ? ru : en;
     private bool Dirty => !_validCountdown || !_validClockColor || SettingsCodec.Write(_draft) != SettingsCodec.Write(_store.Current);
-    private bool Valid => _validCountdown && _validClockColor && ActionPolicy.Menu(_draft, false, SystemActions.IsAvailable).Count > 0 &&
+    private bool Valid => _validCountdown && _validClockColor && _draft.Rdp.CanSave && ActionPolicy.Menu(_draft, false, SystemActions.IsAvailable).Count > 0 &&
         ActionPolicy.Menu(_draft, true, SystemActions.IsAvailable).Count > 0;
 
-    public SettingsWindow(SettingsStore store)
+    public SettingsWindow(SettingsStore store, string initialPage = "general")
     {
         _store = store;
         _draft = store.Current.Clone();
+        _page = initialPage;
         InitializeComponent();
+        _rdpResultTimer.Tick += (_, _) =>
+        {
+            _rdpResultTimer.Stop();
+            RefreshRdpIndicator();
+        };
+        Closed += (_, _) =>
+        {
+            _rdpOperation?.Cancel();
+            _rdpOperation = null;
+            _rdpMonitor?.Cancel();
+            _rdpResultTimer.Stop();
+        };
         try { SystemBackdrop = new MicaBackdrop(); } catch { }
         ConfigureWindow();
         AppWindow.Closing += (sender, e) =>
@@ -47,12 +63,13 @@ public sealed partial class SettingsWindow : Window
             if (e.Key == VirtualKey.Escape && !_dialogOpen) { e.Handled = true; await CloseAsync(); }
         };
         BuildShell();
+        _ = MonitorRdpAsync();
     }
 
     private void ConfigureWindow()
     {
         nint hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
-        Title = L("Настройки Cozy Shutdown", "Cozy Shutdown Settings");
+        Title = L("Настройки Cozy Shutdown", "Cozy Shutdown Settings") + (App.LocalTest ? " · " + AppBranding.Version + " Test" : "");
         AppBranding.ApplyWindowIcons(AppWindow);
         NativeTheme.ApplyWindowTitleBar(_store.Current.Theme, hwnd);
         double scale = Math.Max(1, GetDpiForWindow(hwnd) / 96.0);
@@ -72,52 +89,81 @@ public sealed partial class SettingsWindow : Window
 
     private void BuildShell()
     {
+        _rdpOperation?.Cancel();
+        _rdpOperation = null;
+        _rdpResultTimer.Stop();
+        _rdpFeedback = null;
+        _refreshRdpButtons = null;
         _loading = true;
         RootGrid.Children.Clear();
         RootGrid.RowDefinitions.Clear();
+        RootGrid.ColumnDefinitions.Clear();
         RootGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
         RootGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        var main = new Grid();
-        main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(280) });
-        main.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(NavigationWidth) });
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star), MaxWidth = ContentWidth + SettingsInset });
+        RootGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(SettingsInset) });
         var nav = new StackPanel { Margin = new Thickness(20, 28, 16, 12), Spacing = 5 };
         nav.Children.Add(Navigation(L("Основные", "General"), "general"));
         nav.Children.Add(Navigation(L("Действия в трее", "Tray actions"), "actions"));
         nav.Children.Add(Navigation(L("Часы и календарь", "clock"), "clock"));
-        main.Children.Add(nav);
-        var panel = new StackPanel { Width = 540, HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(24, 28, 0, 0), Spacing = 5 };
-        if (_page == "general") BuildGeneral(panel); else if (_page == "actions") BuildActions(panel); else BuildClock(panel);
+        nav.Children.Add(Navigation(L("RDP-модуль", "RDP module"), "rdp"));
+        RootGrid.Children.Add(nav);
+        var panel = new StackPanel { Margin = new Thickness(0, 28, 0, 0), Spacing = 5 };
+        switch (_page)
+        {
+            case "actions": BuildActions(panel); break;
+            case "clock": BuildClock(panel); break;
+            case "rdp": BuildRdp(panel); break;
+            default: BuildGeneral(panel); break;
+        }
         _validation = new TextBlock { TextWrapping = TextWrapping.Wrap, Opacity = .68, Margin = new Thickness(2, 5, 0, 0) };
         panel.Children.Add(_validation);
-        var scroll = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+        var scroll = new ScrollViewer { Margin = new Thickness(SettingsInset, 0, 0, 0),
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalContentAlignment = HorizontalAlignment.Stretch };
         Grid.SetColumn(scroll, 1);
-        main.Children.Add(scroll);
-        RootGrid.Children.Add(main);
+        RootGrid.Children.Add(scroll);
 
-        var footer = new Grid { Margin = new Thickness(20, 10, 56, 18) };
-        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(260) });
-        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        footer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        var info = new StackPanel { Opacity = .68, Margin = new Thickness(8, 0, 0, 0) };
-        info.Children.Add(new TextBlock { Text = "Cozy Shutdown 1.0.3" + (App.Preview ? " · Preview" : "") });
+        var info = new StackPanel { Opacity = .68, Margin = new Thickness(28, 10, 0, 18) };
+        info.Children.Add(new TextBlock { Text = "Cozy Shutdown " + AppBranding.Version +
+            (App.LocalTest ? " · Test" : App.Preview ? " · Preview" : "") });
         var links = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
         links.Children.Add(new TextBlock { Text = "sol669 ·", VerticalAlignment = VerticalAlignment.Center });
         links.Children.Add(new HyperlinkButton { Content = "GitHub", NavigateUri = new Uri("https://github.com/sol669/Cozy-Shutdown"), Padding = new Thickness(0) });
         info.Children.Add(links);
-        footer.Children.Add(info);
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10 };
+        Grid.SetRow(info, 1);
+        RootGrid.Children.Add(info);
+        if (_page == "rdp")
+        {
+            var rdpLayout = new Grid();
+            rdpLayout.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+            rdpLayout.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
+            _rdpFeedback = new TextBlock
+            {
+                Opacity = .8, VerticalAlignment = VerticalAlignment.Center, TextAlignment = TextAlignment.Center,
+                TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8, 6, 8, 6)
+            };
+            scroll.Content = rdpLayout;
+            rdpLayout.Children.Add(panel);
+            Grid.SetRow(_rdpFeedback, 1);
+            rdpLayout.Children.Add(_rdpFeedback);
+            scroll.SizeChanged += (_, e) => rdpLayout.MinHeight = e.NewSize.Height;
+            RefreshRdpIndicator();
+        }
+        else scroll.Content = panel;
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10,
+            HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
+            Margin = new Thickness(SettingsInset, 10, 0, 18) };
         var close = new Button { Content = L("Закрыть", "Close"), MinWidth = 110, Style = ResourceStyle("AppDefaultButtonStyle") };
         close.Click += async (_, _) => await CloseAsync();
         _save = new Button { Content = L("Сохранить", "Save"), MinWidth = 110, Style = ResourceStyle("AppAccentButtonStyle") };
         _save.Click += async (_, _) => await SaveAsync();
         buttons.Children.Add(close);
         buttons.Children.Add(_save);
-        Grid.SetColumn(buttons, 2);
-        footer.Children.Add(buttons);
-        Grid.SetRow(footer, 1);
-        RootGrid.Children.Add(footer);
+        Grid.SetColumn(buttons, 1);
+        Grid.SetRow(buttons, 1);
+        RootGrid.Children.Add(buttons);
         ApplyTheme();
         _loading = false;
         UpdateState();
@@ -129,6 +175,7 @@ public sealed partial class SettingsWindow : Window
             CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(0),
             HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Left,
             Style = ResourceStyle(page == _page ? "AppSelectedNavigationButtonStyle" : "AppNavigationButtonStyle") };
+        if (page == "rdp") AddRdpIndicator(button, title);
         button.Click += async (_, _) =>
         {
             if (page == _page || _dialogOpen) return;
@@ -145,7 +192,7 @@ public sealed partial class SettingsWindow : Window
         panel.Children.Add(DefaultRow(false));
         panel.Children.Add(DefaultRow(true));
         panel.Children.Add(Header(L("Система", "System")));
-        panel.Children.Add(ToggleRow(L("Автозапуск", "Autostart"), _draft.StartWithWindows, true, value => _draft.StartWithWindows = value));
+        panel.Children.Add(ToggleRow(L("Автозапуск", "Autostart"), _draft.StartWithWindows, !App.LocalTest, value => _draft.StartWithWindows = value));
         panel.Children.Add(Row(L("Тема", "Theme"), Choice(new[] { L("Как в Windows", "Use Windows setting"), L("Светлая", "Light"), L("Темная", "Dark") },
             (int)_draft.Theme, i => _draft.Theme = (AppTheme)i)));
         panel.Children.Add(Row(L("Язык", "Language"), Choice(new[] { "Русский", "English" }, (int)_draft.Language, i => _draft.Language = (AppLanguage)i)));
@@ -222,6 +269,8 @@ public sealed partial class SettingsWindow : Window
                 _draft.EnabledActions = value ? _draft.EnabledActions | disconnect.ToFlag() : _draft.EnabledActions & ~disconnect.ToFlag();
                 ReconcileDefaults();
             }));
+        panel.Children.Add(ToggleRow(L("Меню RDP", "RDP menu"),
+            _draft.ShowRdpInTray, true, value => _draft.ShowRdpInTray = value));
     }
 
     private void BuildClock(StackPanel panel)
@@ -334,6 +383,8 @@ public sealed partial class SettingsWindow : Window
         {
             _validation.Text = !_validCountdown ? L("Введите целое число от 1 до 300 секунд.", "Enter a whole number from 1 to 300 seconds.") :
                 !_validClockColor ? L("Введите код цвета: FFF или FFFFFF.", "Enter a color code: FFF or FFFFFF.") :
+                !_draft.Rdp.CanSave ? L("Проверьте адрес ПК, настройки WoL и адрес сервера MPS.",
+                    "Check the PC address, WoL settings, and MPS server address.") :
                 !Valid ? L("Оставьте хотя бы одно доступное действие для локального и удаленного сеансов.", "Keep at least one available action for local and remote sessions.") : "";
             _validation.Visibility = Valid ? Visibility.Collapsed : Visibility.Visible;
         }

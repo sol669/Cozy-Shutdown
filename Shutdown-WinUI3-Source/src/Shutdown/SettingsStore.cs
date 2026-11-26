@@ -10,7 +10,7 @@ public sealed class SettingsStore
 {
     // The installer grants users write access only to this folder. Portable builds use the
     // same layout next to their executable, so all app-owned state travels with the app.
-    private static readonly string Folder = Path.Combine(AppContext.BaseDirectory, "Data");
+    private static readonly string Folder = Path.Combine(AppContext.BaseDirectory, App.LocalTest ? "Data-LocalTest" : "Data");
     private static readonly string FilePath = Path.Combine(Folder, "settings.json");
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValueName = AppBranding.AutostartValueName;
@@ -27,7 +27,7 @@ public sealed class SettingsStore
             Directory.CreateDirectory(Folder);
             if (!File.Exists(FilePath))
             {
-                Current = new AppSettings();
+                Current = new AppSettings { StartWithWindows = !App.LocalTest };
                 Save();
                 return;
             }
@@ -65,6 +65,7 @@ public sealed class SettingsStore
 
     public void ApplyAutostart()
     {
+        if (App.LocalTest) return;
 #if DEBUG
         if (App.Preview) return;
 #endif

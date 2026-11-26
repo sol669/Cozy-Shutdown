@@ -14,6 +14,7 @@
 
 - Выключение, перезагрузка, сон, гибернация и блокировка
 - Отключение от RDP-сеанса
+- Подключение к удалённому ПК из трея, пробуждение через Wake-on-LAN, выключение и перезапуск через Magic Packet Server
 - Главное действие отдельно для локального и удалённого сеанса
 - Подтверждение и обратный отсчёт перед действием
 - Таймер: через интервал или к заданному времени
@@ -36,7 +37,7 @@
 | Установщик | Загружает недостающие компоненты Microsoft |
 | Автономный установщик | Все компоненты внутри, интернет не нужен |
 | Portable | Без установки; нужны .NET 8 Runtime и Windows App Runtime 2.3 (x64) |
-| Автономная Portable | Папка `Prerequisites` содержит официальные установщики на случай, если компоненты ещё не установлены |
+| Автономная Portable | Среды выполнения уже входят в комплект |
 
 ## English
 
@@ -48,6 +49,7 @@ Configure the menu, choose a primary action for local and Remote Desktop session
 
 - Shut down, restart, sleep, hibernate, and lock
 - Disconnect from an RDP session
+- Connect to a remote PC from the tray, wake it via Wake-on-LAN, and shut it down or restart it via Magic Packet Server
 - Separate primary actions for local and remote sessions
 - Confirmation and countdown before an action
 - Schedule by interval or a specific time
@@ -62,7 +64,7 @@ Supports Windows 10 and Windows 11 (x64).
 | Installer | Downloads missing Microsoft components |
 | Offline installer | All components included; no internet required |
 | Portable | Requires .NET 8 Runtime and Windows App Runtime 2.3 (x64) |
-| Offline Portable | The `Prerequisites` folder contains the official installers if the components are not installed yet |
+| Offline Portable | Includes the required runtimes |
 
 ## License
 

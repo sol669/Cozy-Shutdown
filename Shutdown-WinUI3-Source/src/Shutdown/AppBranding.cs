@@ -8,6 +8,7 @@ internal static class AppBranding
 {
     internal const string Name = "Cozy Shutdown";
     internal const string AutostartValueName = "Cozy Shutdown";
+    internal static string Version => typeof(AppBranding).Assembly.GetName().Version!.ToString(3);
     internal static string IconPath => Path.Combine(AppContext.BaseDirectory, "Assets", "ShutdownTrey.ico");
 
     internal static void ApplyWindowIcons(AppWindow window)

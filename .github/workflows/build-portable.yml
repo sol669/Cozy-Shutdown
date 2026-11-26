@@ -42,6 +42,7 @@ jobs:
         run: >
           dotnet publish Shutdown-WinUI3-Source/src/Shutdown/Shutdown.csproj
           -c Release -r win-x64 --self-contained true -p:Platform=x64
+          -p:WindowsAppSDKSelfContained=true
           -p:IntermediateOutputPath=obj/ReleaseOffline/ -p:OutputPath=bin/ReleaseOffline/
           -o publish
 
@@ -67,9 +68,7 @@ jobs:
             Copy-Item README.md "$folder/README.md"
             Copy-Item LICENSE "$folder/LICENSE.txt"
           }
-          # WinUI is supplied by the Windows App Runtime installer; the .NET runtime
-          # remains embedded in the offline package.
-          foreach ($file in @('coreclr.dll', 'hostfxr.dll')) {
+          foreach ($file in @('coreclr.dll', 'hostfxr.dll', 'Microsoft.UI.Xaml.dll')) {
             if (-not (Test-Path "publish/$file")) { throw "Offline runtime missing: $file" }
           }
           if (Test-Path 'publish-standard/coreclr.dll') { throw 'Standard package contains offline runtime.' }
@@ -82,20 +81,12 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
 
-      - name: Download offline installer prerequisites
-        shell: pwsh
-        run: |
-          $prerequisites = Join-Path $env:GITHUB_WORKSPACE 'installer/prerequisites'
-          New-Item -ItemType Directory -Force -Path $prerequisites | Out-Null
-          Invoke-WebRequest 'https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.30/windowsdesktop-runtime-8.0.30-win-x64.exe' -OutFile "$prerequisites/windowsdesktop-runtime-8.0.30-win-x64.exe"
-          Invoke-WebRequest 'https://download.microsoft.com/download/cbb0f858-7923-48f0-bc2e-ba8ae187b65c/WindowsAppRuntimeInstall-x64.exe' -OutFile "$prerequisites/WindowsAppRuntimeInstall-x64-2.3.1.exe"
-
       - name: Build both installers
         shell: pwsh
         run: |
           $compiler = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           $version = '${{ steps.version.outputs.value }}'
-          & $compiler "/DAppVersion=$version" "/DPublishDir=$env:GITHUB_WORKSPACE\publish" installer/Shutdown.iss
+          & $compiler "/DAppVersion=$version" /DBundledRuntime=1 "/DPublishDir=$env:GITHUB_WORKSPACE\publish" installer/Shutdown.iss
           if ($LASTEXITCODE -ne 0) { throw 'Offline installer failed.' }
           & $compiler "/DAppVersion=$version" "/DPublishDir=$env:GITHUB_WORKSPACE\publish-standard" installer/Shutdown-Online.iss
           if ($LASTEXITCODE -ne 0) { throw 'Online installer failed.' }
@@ -111,8 +102,20 @@ jobs:
           if-no-files-found: error
           compression-level: 0
 
-      - name: Prepare draft release for verification
+      - name: Check for an already published release
         if: startsWith(github.ref, 'refs/tags/')
+        id: existing-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $release = gh release list --repo $env:GITHUB_REPOSITORY --limit 100 --json tagName,isDraft
+          if ($LASTEXITCODE -ne 0) { throw 'Could not check existing GitHub releases.' }
+          $published = [bool](($release | ConvertFrom-Json) | Where-Object { $_.tagName -eq $env:GITHUB_REF_NAME -and -not $_.isDraft })
+          "published=$($published.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
+      - name: Prepare draft release for verification
+        if: startsWith(github.ref, 'refs/tags/') && steps.existing-release.outputs.published == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}

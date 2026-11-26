@@ -4,7 +4,7 @@
 #define AppURL "https://github.com/sol669/Cozy-Shutdown"
 
 #ifndef AppVersion
-  #define AppVersion "1.0.3"
+  #define AppVersion "1.1.0"
 #endif
 
 #ifndef PublishDir
@@ -50,8 +50,10 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+#ifndef BundledRuntime
 Source: "prerequisites\windowsdesktop-runtime-8.0.30-win-x64.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall ignoreversion; Check: not IsDotNetDesktop8Installed
 Source: "prerequisites\WindowsAppRuntimeInstall-x64-2.3.1.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall ignoreversion; Check: not IsWindowsAppRuntimeInstalled
+#endif
 
 [Dirs]
 Name: "{app}\Data"; Permissions: users-modify
@@ -67,10 +69,13 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename:
 Type: filesandordirs; Name: "{app}\Data"
 
 [Run]
+#ifndef BundledRuntime
 Filename: "{tmp}\windowsdesktop-runtime-8.0.30-win-x64.exe"; Parameters: "/install /quiet /norestart"; StatusMsg: "Установка Microsoft .NET Desktop Runtime..."; Flags: waituntilterminated; Check: not IsDotNetDesktop8Installed
 Filename: "{tmp}\WindowsAppRuntimeInstall-x64-2.3.1.exe"; Parameters: "--quiet"; StatusMsg: "Установка Windows App Runtime..."; Flags: waituntilterminated; Check: not IsWindowsAppRuntimeInstalled
+#endif
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
+#ifndef BundledRuntime
 [Code]
 function IsDotNetDesktop8Installed: Boolean;
 var
@@ -89,3 +94,4 @@ begin
     '-NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "if (Get-AppxPackage -Name ''Microsoft.WindowsAppRuntime.2'' -ErrorAction SilentlyContinue | Where-Object { [version]$_.Version -ge [version]''2.3.0.0'' } | Select-Object -First 1) { exit 0 } else { exit 1 }"',
     '', SW_HIDE, ewWaitUntilTerminated, ResultCode) and (ResultCode = 0);
 end;
+#endif

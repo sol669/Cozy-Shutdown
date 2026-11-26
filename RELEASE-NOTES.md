@@ -1,5 +1,7 @@
-## Cozy Shutdown 1.0.3
+**RU**
 
-- Добавлены рабочие часы и календарь на рабочем столе с настройкой внешнего вида и положения.
-- Снижена фоновая нагрузка: оптимизированы отрисовка часов, планировщик и обновление иконки в трее.
-- Улучшена устойчивость после Win+D, смены дисплея и перезапуска Explorer.
+Крупное обновление Cozy Shutdown. Новый **RDP-модуль** позволяет из одного приложения подключаться к удалённому ПК, включать его через Wake-on-LAN, а также выключать и перезагружать через Magic Packet Server. Подключение доступно прямо из трея, в том числе автоматически после пробуждения ПК.
+
+**EN**
+
+A major update to Cozy Shutdown. The new **RDP module** lets you connect to a remote PC, wake it via Wake-on-LAN, and shut it down or restart it via Magic Packet Server. Connect directly from the system tray, with the option to connect automatically after waking the PC.

@@ -7,6 +7,11 @@ namespace ShutdownApp;
 
 public partial class App : Application
 {
+#if COZY_LOCAL_TEST
+    internal static bool LocalTest => true;
+#else
+    internal static bool LocalTest => false;
+#endif
 #if DEBUG
     // Local UI harness: intentionally unavailable in Release builds.
     internal static bool Preview { get; } = Environment.GetCommandLineArgs().Contains("--preview");
@@ -30,7 +35,8 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
-        _singleInstance = new Mutex(true, Preview ? "sol669.CozyShutdown.Preview" : "sol669.CozyShutdown.Singleton", out bool createdNew);
+        string instance = LocalTest ? "LocalTest" : Preview ? "Preview" : "Singleton";
+        _singleInstance = new Mutex(true, "sol669.CozyShutdown." + instance, out bool createdNew);
         if (!createdNew)
         {
             Exit();
@@ -43,7 +49,8 @@ public partial class App : Application
         Tray = new TrayService(Settings);
         Tray.Initialize();
         DesktopClockService.Initialize(Settings);
-        if (Preview || Environment.GetCommandLineArgs().Contains("--settings")) Tray.ShowSettings();
+        if (LocalTest) Tray.ShowSettings("rdp");
+        else if (Preview || Environment.GetCommandLineArgs().Contains("--settings")) Tray.ShowSettings();
     }
 
     private void CreateLifetimeWindow()

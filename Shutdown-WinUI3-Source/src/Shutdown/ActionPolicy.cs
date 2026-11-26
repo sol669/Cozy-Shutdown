@@ -35,6 +35,7 @@ public static class ActionPolicy
 
     public static void Normalize(AppSettings settings)
     {
+        settings.Rdp = (settings.Rdp ?? new RdpProfile()).Normalize();
         settings.EnabledActions &= RemoteMask;
         if ((settings.EnabledActions & LocalMask) == 0) settings.EnabledActions |= EnabledPowerActions.Shutdown;
         if (!Actions(false).Contains(settings.DefaultAction) || !settings.EnabledActions.HasFlag(settings.DefaultAction.ToFlag()))
@@ -65,6 +66,17 @@ public static class SettingsCodec
         var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
+        if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty(nameof(AppSettings.Rdp), out var rdp) &&
+            rdp.ValueKind == JsonValueKind.Object && !rdp.TryGetProperty(nameof(RdpProfile.Address), out _) &&
+            rdp.TryGetProperty("Host", out var hostValue) && hostValue.ValueKind == JsonValueKind.String)
+        {
+            string host = hostValue.GetString() ?? "";
+            int port = rdp.TryGetProperty("Port", out var portValue) && portValue.ValueKind == JsonValueKind.Number &&
+                portValue.TryGetInt32(out int previousPort) && previousPort is >= 1 and <= 65535 ? previousPort : 3389;
+            if (!string.IsNullOrWhiteSpace(host) && settings.Rdp is not null)
+                settings.Rdp = settings.Rdp with { Address = port == 3389 ? host : host.Contains(':')
+                    ? $"[{host.Trim('[', ']')}]:{port}" : $"{host}:{port}" };
+        }
         // v1.2.0 briefly used a separate remote list. Merge it into the unified list so no chosen
         // action disappears during the migration. Earlier releases get Disconnect enabled by default.
         if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("RemoteEnabledActions", out var legacyRemote))

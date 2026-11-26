@@ -23,7 +23,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationIcon>Assets\ShutdownTrey.ico</ApplicationIcon>
     <AssemblyName>CozyShutdown</AssemblyName>
-    <Version>1.0.3</Version>
+    <Version>1.1.0</Version>
     <Authors>sol669</Authors>
     <Product>Cozy Shutdown</Product>
     <Description>Native Windows tray utility for immediate and scheduled power actions.</Description>
@@ -31,6 +31,9 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(CozyLocalTest)' == 'true'">
+    <DefineConstants>$(DefineConstants);COZY_LOCAL_TEST</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

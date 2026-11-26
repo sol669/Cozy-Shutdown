@@ -44,6 +44,8 @@ public enum AppLanguage
 
 public sealed class AppSettings
 {
+    public RdpProfile Rdp { get; set; } = new();
+    public bool ShowRdpInTray { get; set; }
     public ConfirmationMode ConfirmationMode { get; set; } = ConfirmationMode.Countdown;
     public PowerActionKind DefaultAction { get; set; } = PowerActionKind.Shutdown;
     public EnabledPowerActions EnabledActions { get; set; } =

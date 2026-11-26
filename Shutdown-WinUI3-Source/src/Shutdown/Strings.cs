@@ -24,6 +24,42 @@ public static class Strings
     };
 
     public static string DisconnectRdp => Ru ? "Отключиться" : "Disconnect";
+    internal static string RdpActionName(RdpPrimaryAction action, string? pcName = null)
+    {
+        if (string.IsNullOrEmpty(pcName))
+            return (Ru, action) switch
+            {
+                (true, RdpPrimaryAction.Connect) => "Подключиться",
+                (true, RdpPrimaryAction.Start) => "Запуск",
+                (true, _) => "Включить",
+                (false, RdpPrimaryAction.Connect) => "Connect",
+                (false, RdpPrimaryAction.Start) => "Start",
+                _ => "Wake"
+            };
+        return (Ru, action) switch
+        {
+            (true, RdpPrimaryAction.Connect) => $"Подключиться к {pcName}",
+            (true, _) => $"Запустить {pcName}",
+            (false, RdpPrimaryAction.Connect) => $"Connect to {pcName}",
+            _ => $"Start {pcName}"
+        };
+    }
+
+    internal static string RdpWaiting(bool waking) => waking
+        ? (Ru ? "Ждём запуска ПК…" : "Waiting for the PC to start…")
+        : (Ru ? "Ждём готовности RDP…" : "Waiting for RDP…");
+    internal static string MpsNotAvailable => Ru ? "Magic Packet Server не отвечает." : "Magic Packet Server is not responding.";
+    internal static string RdpResult(RdpStartResult result) => (Ru, result) switch
+    {
+        (true, RdpStartResult.Connected) => "Подключение передано Windows.",
+        (true, RdpStartResult.WakeSent) => "Пакет WoL отправлен.",
+        (true, RdpStartResult.NeedsWakeSettings) => "RDP не ответил. Для пробуждения заполните настройки WoL.",
+        (true, _) => "RDP не ответил за 60 секунд.",
+        (false, RdpStartResult.Connected) => "Connection handed to Windows.",
+        (false, RdpStartResult.WakeSent) => "WoL packet sent.",
+        (false, RdpStartResult.NeedsWakeSettings) => "RDP did not respond. Configure WoL to wake the PC.",
+        _ => "RDP did not respond within 60 seconds."
+    };
     public static string Settings => Ru ? "Настройки…" : "Settings…";
     public static string Exit => Ru ? "Выход" : "Exit";
     public static string ScheduledAction => Ru ? "Отложенное действие" : "Scheduled action";
